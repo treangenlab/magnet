@@ -1,6 +1,7 @@
-from concurrent.futures import thread
 import os
 import subprocess
+import argparse
+import sys
 import pandas as pd
 
 def sort_samfile(assembly_id, output_dir, num_cores):
@@ -69,21 +70,30 @@ def calculate_depth(assembly_id, output_dir):
                     stdout=open(os.path.join(depth_file), "w"))
         
 
-reference_metadata = pd.read_csv('reference_metadata.csv')
-reference_genome_path = 'reference_genomes'
-input_fastq = '/home/Users/yl181/seqscreen_nano/ZymoBIOMICS.STD2.Log.ont.raw_sequences/ERR3152366.downsampled.fastq'
+def main(argv):
+	'''main function'''
+	parser = argparse.ArgumentParser(description="Read Alignment and Coverage Calculation.")
+	parser.add_argument("-i", "--fastq", type=str, help="Sequences in fastq format", required=True)
+	parser.add_argument("-o", "--output", type=str, help="Output directory", required=True)
+	parser.add_argument("-t", "--threads", type=int, default=1,
+                        help="Number of threads. [1]")
+	
+	args = parser.parse_args()
+	
+	output_dir = args.output
+	input_fastq = args.fastq
+	threads = args.threads
+	
+	reference_metadata = pd.read_csv(os.path.join(output_dir, 'reference_metadata.csv'))
+	reference_genome_path = os.path.join(output_dir, 'reference_genomes')
 
-downloaded_assemblies = reference_metadata[reference_metadata['Downloaded']]
+	downloaded_assemblies = reference_metadata[reference_metadata['Downloaded']]
 
-output_dir = 'alignment'
-if not os.path.exists(output_dir):
-    os.mkdir(output_dir)
+	for assembly_id in downloaded_assemblies['Assembly Accession ID']:
+		reference_fasta = os.path.join(reference_genome_path, f'{assembly_id}.fasta')
+		run_minimap2(input_fastq, reference_fasta, assembly_id, output_dir, threads=threads)
+		sort_samfile(assembly_id, output_dir, threads)
+		calculate_depth(assembly_id, output_dir)
 
-num_cores = 20
-
-for assembly_id in downloaded_assemblies['Assembly Accession ID']:
-    reference_fasta = os.path.join(reference_genome_path, f'{assembly_id}.fasta')
-    #run_minimap2(input_fastq, reference_fasta, assembly_id, output_dir, threads=num_cores)
-    #sort_samfile(assembly_id, output_dir, num_cores)
-    calculate_depth(assembly_id, output_dir)
-    
+if __name__ == "__main__":
+	main(sys.argv[1:])
