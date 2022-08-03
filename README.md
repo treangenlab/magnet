@@ -18,3 +18,4 @@ Run the Python/Jupyter scripts in the following order:
 - Samtools v1.7
 - Biopython
 - Pandas
+- Ete3
