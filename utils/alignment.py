@@ -38,7 +38,6 @@ def sort_samfile(assembly_id, output_dir, num_cores):
                     check=True)
 
 def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=20):
-
     sam_files = os.path.join(output_dir, "sam_files")
 
     if not os.path.exists(sam_files):
@@ -48,7 +47,7 @@ def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=2
                     "-ax", "map-ont", 
                     reference_file, 
                     input_fastq, 
-                    "--sam-hit-only", 
+                    "--sam-hit-only",
                     "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
                     "-t", str(threads)],
                     check=True)
