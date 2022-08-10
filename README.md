@@ -4,11 +4,27 @@ This pipeline handles reference genome selection, download using NCBI Datasets, 
 
 ## Getting started
 
-Run the Python/Jupyter scripts in the following order:
+```
+usage: pipeline.py [-h] -i FASTA -o OUTPUT [-w WORKING] [-m MIN_FRAC] [-c MIN_COVERAGE_SCORE] [-t THREADS]
 
-- reference_finder.ipynb
-- utils/alignment.py
-- cal_depth.ipynb
+Repeated Read Alignment Module
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -i FASTA, --fasta FASTA
+                        Sequences in fasta format.
+  -o OUTPUT, --output OUTPUT
+                        seqscreen output directory.
+  -w WORKING, --working WORKING
+                        working directory. [working]
+  -m MIN_FRAC, --min-frac MIN_FRAC
+                        minimum fraction of assigned reads for a species to be included in the first alignment
+                        process. [0.002]
+  -c MIN_COVERAGE_SCORE, --min-coverage-score MIN_COVERAGE_SCORE
+                        minimum coverage score for a species to be included in the second alignment process. [0.7]
+  -t THREADS, --threads THREADS
+                        number of threads. [1]
+```
 
 ## Dependencies
 
@@ -19,3 +35,4 @@ Run the Python/Jupyter scripts in the following order:
 - Biopython
 - Pandas
 - Ete3
+
