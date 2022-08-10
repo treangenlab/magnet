@@ -7,7 +7,7 @@ This pipeline handles reference genome selection, download using NCBI Datasets, 
 Run the Python/Jupyter scripts in the following order:
 
 - reference_finder.ipynb
-- run_minimap2.py
+- utils/alignment.py
 - cal_depth.ipynb
 
 ## Dependencies
