@@ -16,7 +16,7 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         seqscreen output directory.
   -w WORKING, --working WORKING
-                        working directory. [work]
+                        working directory. [working]
   -m MIN_FRAC, --min-frac MIN_FRAC
                         minimum fraction of assigned reads for a species to be included in the first alignment
                         process. [0.002]
