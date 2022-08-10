@@ -14,8 +14,8 @@ Run the Python/Jupyter scripts in the following order:
 
 - Python 3.9
 - NCBI Datasets v13.30.2
-- Minimap2 v2.17-r941
-- Samtools v1.7
+- Minimap2 v2.24-r1122
+- Samtools v1.15.1
 - Biopython
 - Pandas
 - Ete3
