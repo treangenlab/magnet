@@ -3,6 +3,7 @@ import argparse
 import sys
 import subprocess
 import math
+import pickle
 import warnings
 from collections import defaultdict
 import json
@@ -352,7 +353,7 @@ def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=2
                     "--sam-hit-only",
                     "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
                     "-t", str(threads)],
-                    check=True)
+                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def samtools_calculate_depth(assembly_id, output_dir):
     depth_files = os.path.join(output_dir, "depth_files")
@@ -418,9 +419,12 @@ def get_expected_coverage(genome_length, reads_mapped, genome_totol_count):
     
     expected_M = N*(1-((1-1/N)**x))
     variance = N*((1-1/N)**x) + (N**2)*(1-1/N)*((1-2/N)**x)-(N**2)*((1-1/N)**(2*x))
-    std = math.sqrt(variance)
-    expected_coverage = expected_M/N
     
+    expected_coverage = expected_M/N
+    try:
+        std = math.sqrt(variance)
+    except ValueError:
+        std = 0
     return expected_coverage, std
 
 def calculate_depth(assembly_id, output_directory, min_depth=1):
@@ -445,9 +449,9 @@ def calculate_depth(assembly_id, output_directory, min_depth=1):
 
     
     if genome_totol_count == 0:
-        breadth_coverage = None
-        depth_coverage = None
-        expected_breadth_coverage = None
+        breadth_coverage = 0
+        depth_coverage = 0
+        expected_breadth_coverage = 0
     else:
         breadth_coverage = genome_pos_count/genome_length
         depth_coverage = genome_totol_count/genome_pos_count
@@ -541,7 +545,10 @@ def alignment_1_summary(downloaded_assemblies, output_directory):
         breadth_coverage_list.append(breadth_coverage)
         depth_coverage_list.append(depth_coverage)
         expected_breadth_coverage_list.append(expected_breadth_coverage)
-        coverage_score.append(breadth_coverage/expected_breadth_coverage)
+        if expected_breadth_coverage != 0:
+            coverage_score.append(breadth_coverage/expected_breadth_coverage)
+        else:
+            coverage_score.append(0)
         
     downloaded_assemblies['Breadth Coverage'] = breadth_coverage_list
     downloaded_assemblies['Expected Coverage'] = expected_breadth_coverage_list
@@ -607,6 +614,62 @@ def ani_summary(downloaded_assemblies, consensus_record_dict, output_directory):
     
     return downloaded_assemblies
 
+def build_record_dict(sequences_db_f):
+    sequence_ids = set()
+    record_dict = dict()
+    count = 0
+    for record in SeqIO.parse(sequences_db_f, "fasta"):
+        count += 1
+        if record.id not in sequence_ids:
+            sequence_ids.add(record.id)
+            record_dict[record.id] = record
+    print(f"WARNING: {count-len(record_dict)} duplicated record found among {count} sequences.")
+    
+    return record_dict
+
+def local_taxid_fetch(taxid, output_directory, taxid2seqid_dict, record_dict):
+    reference_genome_path=os.path.join(output_directory, 'reference_genomes')
+    if not os.path.exists(reference_genome_path):
+        os.mkdir(reference_genome_path)
+    
+    records = []
+    for sequence_id in taxid2seqid_dict[str(taxid)]:
+        records.append(record_dict[sequence_id])
+        
+    if len(records) > 0:
+        with open(os.path.join(reference_genome_path, f"taxid_{taxid}.fasta"), "w") as output_handle:
+            SeqIO.write(records, output_handle, "fasta")
+        return taxid, f"taxid_{taxid}", "N/A", "N/A", "N/A", "N/A", True
+    else:
+        return taxid, "N/A", "N/A", "N/A", "N/A", "N/A", False
+	
+def prepare_reference_genomes_offline(taxid_queries, output_directory, sequences_db_f, mapping_f, ncbi_taxa_db):
+    with open(mapping_f, 'rb') as handle:
+        taxid2seqid_dict = pickle.load(handle)
+        
+    record_dict = build_record_dict(sequences_db_f)
+    
+    download_result = []
+    for taxid in taxid_queries:
+        download_result.append(local_taxid_fetch(taxid, output_directory, taxid2seqid_dict, record_dict))
+        
+    reference_metadata = pd.DataFrame(download_result,
+                                      columns=['Taxonomy ID', 
+                                               'Assembly Accession ID', 
+                                               'Source Database', 
+                                               'Is Representative', 
+                                               'Assembly Level', 
+                                               'Organism of Assembly', 
+                                               'Downloaded'])
+    
+    taxonomy_name = []
+    for taxid in reference_metadata['Taxonomy ID']:
+        taxonomy_name.append(ncbi_taxa_db.get_taxid_translator([taxid])[taxid])
+    reference_metadata['Species'] = taxonomy_name
+    reference_metadata.to_csv(os.path.join(output_directory, 'reference_metadata.csv'), index=False)
+    
+    return reference_metadata
+
 def main(argv):
 	'''main function'''
 	warnings.filterwarnings("ignore")
@@ -622,8 +685,10 @@ def main(argv):
 	parser.add_argument("-c", "--min-coverage-score", type=float, default=0.7,
 						help="minimum coverage score for a species to be included \
 						in the second alignment process. [0.7]", )
+	parser.add_argument("--online", action='store_true', help="Use online mode for searching reference genome. Requires internet access.")
 	parser.add_argument("-t", "--threads", type=int, default=1,
                         help="Number of threads. [1]")
+	parser.set_defaults(online=False)
 	
 	args = parser.parse_args()
 	# seqscreen_output = "/home/Users/yl181/seqscreen_nano/ZymoBIOMICS.STD.Even.ont.seqscreen"
@@ -639,6 +704,8 @@ def main(argv):
 		
 	# TODO, point this path to DB file
 	ete3db = "/home/Users/yl181/seqscreen_nano/ete3_ncbi_taxonomy_db/taxa.sqlite"
+	sequences_db_f = "/home/dbs/SeqScreenDB_21.4/bowtie2/blacklist.seqs.nt.fna"
+	mapping_f = "/home/Users/yl181/seqscreen_nano/reference_finder/dbs/taxid2seqid.pickle"
 
 	ncbi_taxa_db = NCBITaxa(dbfile=ete3db)
 	
@@ -647,7 +714,11 @@ def main(argv):
 											  min_frac=args.min_frac, 
 											  ncbi_taxa_db=ncbi_taxa_db, 
 											  valid_kingdom={2, 4751, 2157, 10239})
-	reference_metadata = prepare_reference_genomes(taxid_queries, working_directory, ncbi_taxa_db)
+	
+	if args.online:
+		reference_metadata = prepare_reference_genomes(taxid_queries, working_directory, ncbi_taxa_db)
+	else:
+		reference_metadata = prepare_reference_genomes_offline(taxid_queries, working_directory, sequences_db_f, mapping_f, ncbi_taxa_db)
 	
 	downloaded_assemblies = reference_metadata[reference_metadata['Downloaded']]
 	for assembly_id in downloaded_assemblies['Assembly Accession ID']:
