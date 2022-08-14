@@ -64,10 +64,18 @@ The table contains the following information on the reference genome that are be
 - Organism of Assembly: The description of the assembly, may contain strain level information
 - Species: taxonomy name of the species
 
-After the reference genomes are being selected, the pipeline aligns the reads (in fasta format) to each one of the the reference genomes independently, and calculated the following:
+After the reference genomes are being selected, the pipeline aligns the reads (in fasta format) to each one of the the reference genomes independently with Minimap2, and calculated the following:
 
-- Breadth Coverage: The proportion of the genome has reads aligned.   
+- Breadth Coverage: The proportion of the genome has reads aligned
 - Expected Coverage: An estimation of the expected breadth of coverage based on the assumption that the alignment of the read is randomly distributed along the entire reference genome
 - Coverage Score: Breadth Coverage / Expected Coverage
-- Depth Coverage: The mean depth of coverage, calculated with aligned regions only. 
+- Depth Coverage: The mean depth of coverage, calculated with aligned regions only
+
+The pipeline then filters out the species with low coverage score based on the user defined threshold (default: 0.7), then create a reference in multi-fasta format by concatenate the reference genomes of the remaining species. The reads are then aligned to this concatenated reference. The output of this step contains the following:
+
+- BC2: Breadth Coverage of the second round alignment
+- EC2: Expected Coverage of the second round alignment
+- CS2: BC2 / EC2
+- DC2: Depth Coverage of the second round alignment
+- Consensus ANI: The ANI is calculated by comparing the consensus genome created by the second round alignment with the original reference genome. Unaligned regions are excluded. 
 
