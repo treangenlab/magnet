@@ -18,7 +18,6 @@ def run_datasets_summary(taxid, flags, assembly_level='complete_genome'):
     args = args + flags
     
     grepOut  = subprocess.run(args,
-                              check=True,
                               universal_newlines=True,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.DEVNULL)
