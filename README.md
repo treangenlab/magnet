@@ -5,7 +5,8 @@ This pipeline handles reference genome selection, download using NCBI Datasets, 
 ## Getting started
 
 ```
-usage: pipeline.py [-h] -i FASTA -o OUTPUT [-w WORKING] [-m MIN_FRAC] [-c MIN_COVERAGE_SCORE] [-t THREADS]
+usage: reference_inference.py [-h] -i FASTA -o OUTPUT -w WORKING -d DATABASES [-m MIN_FRAC] [-c MIN_COVERAGE_SCORE]
+                              [--online] [-t THREADS]
 
 Repeated Read Alignment Module
 
@@ -14,16 +15,19 @@ optional arguments:
   -i FASTA, --fasta FASTA
                         Sequences in fasta format.
   -o OUTPUT, --output OUTPUT
-                        seqscreen output directory.
+                        Output directory.
   -w WORKING, --working WORKING
-                        working directory. [working]
+                        Working directory.
+  -d DATABASES, --databases DATABASES
+                        SeqScreenDB
   -m MIN_FRAC, --min-frac MIN_FRAC
                         minimum fraction of assigned reads for a species to be included in the first alignment
                         process. [0.002]
   -c MIN_COVERAGE_SCORE, --min-coverage-score MIN_COVERAGE_SCORE
                         minimum coverage score for a species to be included in the second alignment process. [0.7]
+  --online              Use online mode for searching reference genome. Requires internet access.
   -t THREADS, --threads THREADS
-                        number of threads. [1]
+                        Number of threads. [1]
 ```
 
 ## Dependencies
@@ -35,4 +39,6 @@ optional arguments:
 - Biopython
 - Pandas
 - Ete3
+
+
 
