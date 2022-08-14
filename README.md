@@ -42,7 +42,7 @@ optional arguments:
 
 ## Example Output
 
-The following table is an example of the output csv.
+The following table is an example of the output csv file.
 
 | Taxonomy ID | Assembly Accession ID | Source Database | Is Representative | Assembly Level | Organism of Assembly | Downloaded | Species | Breadth Coverage | Expected Coverage | Coverage Score | Depth Coverage | BC2  | EC2  | CS2  | DC2  | Consensus ANI |
 |-------------|-----------------------|-----------------|-------------------|----------------|----------------------|------------|---------|------------------|-------------------|----------------|----------------|------|------|------|------|---------------|
@@ -53,3 +53,13 @@ The following table is an example of the output csv.
 | 1890302 | GCF_008807735.1 | NCBI RefSeq                                   | TRUE  | Complete Genome | Bacillus wiedmannii                           | TRUE | Bacillus wiedmannii     | 0.77 | 0.96 | 0.79 | 4.32 | 0.04 | 0.08 | 0.45 | 2.31 | 0.82 | 
 | 1423    | GCF_000009045.1 | BSNR                                          | TRUE  | Complete Genome | Bacillus subtilis subsp. subtilis str. 168    | TRUE | Bacillus subtilis       | 0.03 | 0.23 | 0.13 | 8.75 | 0    | 0    | 0    | 0    | 0    | 
 | 294     | GCF_000730425.1 | NCBI RefSeq                                   | FALSE | Complete Genome | Pseudomonas fluorescens                       | TRUE | Pseudomonas fluorescens | 0.21 | 0.36 | 0.57 | 2.17 | 0    | 0    | 0    | 0    | 0    | 
+
+The table contains the following feature of about the reference genome that are being selected for alignment:
+
+- Taxonomy ID: The taxonomy ID of the species that users queries
+- Assembly Accession ID: The assembly accession ID of the genome that is being selected as reference genome for the alignment process
+- Source Database: source of the assembly, part of the metadata from NCBI Database
+- Is Representative: Whether or not the assembly is labeled as representative genome in NCBI database
+- Assembly Level: the assembly level of the assembly, can be one of the following: complete genome, chromosome, contig, scaffold
+- Organism of Assembly: The description of the assembly, may contain strain level information
+- Species: taxonomy name of the species
