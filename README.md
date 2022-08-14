@@ -54,7 +54,7 @@ The following table is an example of the output csv file.
 | 1423    | GCF_000009045.1 | BSNR                                          | TRUE  | Complete Genome | Bacillus subtilis subsp. subtilis str. 168    | TRUE | Bacillus subtilis       | 0.03 | 0.23 | 0.13 | 8.75 | 0    | 0    | 0    | 0    | 0    | 
 | 294     | GCF_000730425.1 | NCBI RefSeq                                   | FALSE | Complete Genome | Pseudomonas fluorescens                       | TRUE | Pseudomonas fluorescens | 0.21 | 0.36 | 0.57 | 2.17 | 0    | 0    | 0    | 0    | 0    | 
 
-The table contains the following feature of about the reference genome that are being selected for alignment:
+The table contains the following information on the reference genome that are being selected for alignment:
 
 - Taxonomy ID: The taxonomy ID of the species that users queries
 - Assembly Accession ID: The assembly accession ID of the genome that is being selected as reference genome for the alignment process
@@ -63,3 +63,11 @@ The table contains the following feature of about the reference genome that are 
 - Assembly Level: the assembly level of the assembly, can be one of the following: complete genome, chromosome, contig, scaffold
 - Organism of Assembly: The description of the assembly, may contain strain level information
 - Species: taxonomy name of the species
+
+After the reference genomes are being selected, the pipeline aligns the reads (in fasta format) to each one of the the reference genomes independently, and calculated the following:
+
+- Breadth Coverage: The proportion of the genome has reads aligned.   
+- Expected Coverage: An estimation of the expected breadth of coverage based on the assumption that the alignment of the read is randomly distributed along the entire reference genome
+- Coverage Score: Breadth Coverage / Expected Coverage
+- Depth Coverage: The mean depth of coverage, calculated with aligned regions only. 
+
