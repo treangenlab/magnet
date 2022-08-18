@@ -375,7 +375,7 @@ def calculate_depth_merged(assembly_ids, output_directory, min_depth=1):
             genome_pos_count += genome_id_pos_count[genome_id]
             genome_totol_count += genome_id_totol_count[genome_id]
             if genome_id_pos_count[genome_id] > 0:
-                mapping_stats = get_mapping_stats(assembly_id, output_directory, genome_id)
+                mapping_stats = get_mapping_stats('merged', output_directory, genome_id)
                 reads_mapped_dict[assembly_id] += mapping_stats['reads mapped']
             
         if genome_totol_count > 0:
