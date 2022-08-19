@@ -81,8 +81,9 @@ def download_reference_genome(taxid, working_dir):
             source = None
         assembly_level_ret = res['assemblies'][0]['assembly']['assembly_level']
         organism = res['assemblies'][0]['assembly']['org']['sci_name']
+        strain = res['assemblies'][0]['assembly']['org']['strain']
         
-        print(str(taxid).ljust(10), '\t', assembly_accession)
+        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', organism, '\t', strain, '\t', assembly_level_ret)
         
         return_code = run_datasets_download(taxid, assembly_accession, working_dir)
         
@@ -98,9 +99,10 @@ def download_reference_genome(taxid, working_dir):
         representative = None
         assembly_level_ret = None
         organism = None
+        strain = None
         download_completed = False
         
-    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, download_completed
+    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, strain, download_completed
 
 def unpack(working_dir, output_dir):
     subprocess.run(['unzip', '-o', '-q', 

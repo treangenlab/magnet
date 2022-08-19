@@ -85,7 +85,7 @@ def download_reference_genome(taxid, working_dir):
         assembly_level_ret = res['assemblies'][0]['assembly']['assembly_level']
         organism = res['assemblies'][0]['assembly']['org']['sci_name']
         
-        print(str(taxid).ljust(10), '\t', assembly_accession)
+        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', organism, '\t', strain, '\t', assembly_level_ret)
         
         return_code = run_datasets_download(taxid, assembly_accession, working_dir)
         
@@ -180,7 +180,8 @@ def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db):
                                                'Source Database', 
                                                'Is Representative', 
                                                'Assembly Level', 
-                                               'Organism of Assembly', 
+                                               'Organism of Assembly',
+                                               'Strain',
                                                'Downloaded'])
     
     taxonomy_name = []
@@ -528,9 +529,9 @@ def local_taxid_fetch(taxid, output_directory, taxid2seqid_dict, record_dict):
     if len(records) > 0:
         with open(os.path.join(reference_genome_path, f"taxid_{taxid}.fasta"), "w") as output_handle:
             SeqIO.write(records, output_handle, "fasta")
-        return taxid, f"taxid_{taxid}", "N/A", "N/A", "N/A", "N/A", True
+        return taxid, f"taxid_{taxid}", "Local Database", "N/A", "N/A", "N/A", "N/A", True
     else:
-        return taxid, "N/A", "N/A", "N/A", "N/A", "N/A", False
+        return taxid, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", False
 	
 def prepare_reference_genomes_offline(taxid_queries, output_directory, sequences_db_f, mapping_f, ncbi_taxa_db):
     with open(mapping_f, 'rb') as handle:
@@ -548,7 +549,8 @@ def prepare_reference_genomes_offline(taxid_queries, output_directory, sequences
                                                'Source Database', 
                                                'Is Representative', 
                                                'Assembly Level', 
-                                               'Organism of Assembly', 
+                                               'Organism of Assembly',
+                                               'Strain',
                                                'Downloaded'])
     
     taxonomy_name = []
