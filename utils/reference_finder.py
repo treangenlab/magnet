@@ -41,6 +41,12 @@ def run_datasets_download(taxid, assembly_accession, working_dir):
 def download_reference_genome(taxid, working_dir):
     # check reference and representative genomes first
     #source = 'RefSeq'
+	def cut_text(text, text_length):
+		if len(text) > text_length-2:
+			return text[0:text_length-2] + ".."
+		else:
+			return text.ljust(text_length)
+		
     assembly_accession = None
     res =None
     representative = True # assembly_category
@@ -81,9 +87,12 @@ def download_reference_genome(taxid, working_dir):
             source = None
         assembly_level_ret = res['assemblies'][0]['assembly']['assembly_level']
         organism = res['assemblies'][0]['assembly']['org']['sci_name']
-        strain = res['assemblies'][0]['assembly']['org']['strain']
+        try:
+            strain = res['assemblies'][0]['assembly']['org']['strain']
+        except KeyError:
+            strain = None
         
-        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', organism, '\t', strain, '\t', assembly_level_ret)
+        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', cut_text(organism, 30), '\t', cut_text(strain, 10), '\t', assembly_level_ret)
         
         return_code = run_datasets_download(taxid, assembly_accession, working_dir)
         

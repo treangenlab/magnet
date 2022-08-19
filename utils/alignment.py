@@ -4,7 +4,7 @@ import argparse
 import sys
 import pandas as pd
 
-def sort_samfile(assembly_id, output_dir, num_cores):
+def sort_samfile(assembly_id, output_dir, min_mapq, num_cores):
     '''converting and sorting alignment files'''
     bam_files = os.path.join(output_dir, "bam_files")
     sam_files = os.path.join(output_dir, "sam_files")
@@ -17,6 +17,7 @@ def sort_samfile(assembly_id, output_dir, num_cores):
         "samtools",
         "view",
         "-@", str(num_cores),
+        "--min-MQ", str(min_mapq),
         "-bS", os.path.join(sam_files, f"{assembly_id}.sam")],
         stdout=subprocess.PIPE)
 
