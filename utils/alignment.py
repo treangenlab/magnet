@@ -13,13 +13,12 @@ def sort_samfile(assembly_id, output_dir, num_cores):
         os.mkdir(bam_files)
 
     # covert sam file to binary bam file
-    subprocess.run([
+    samtools_view_res = subprocess.Popen([
         "samtools",
         "view",
         "-@", str(num_cores),
-        "-bS", os.path.join(sam_files, f"{assembly_id}.sam"),
-        "-o", os.path.join(bam_files, f"{assembly_id}.bam")],
-                    check=True)
+        "-bS", os.path.join(sam_files, f"{assembly_id}.sam")],
+        stdout=subprocess.PIPE)
 
     # sort the bam file 
     subprocess.run([
@@ -27,8 +26,10 @@ def sort_samfile(assembly_id, output_dir, num_cores):
         "sort",
         "-@", str(num_cores),
         "-o", os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
-        "-O", "BAM", os.path.join(bam_files, f"{assembly_id}.bam")],
-                    check=True)
+        "-O", "BAM"],
+        stdin=samtools_view_res.stdout,
+        stderr=subprocess.DEVNULL,
+        check=True)
 
     # indexing the sorted bam file 
     subprocess.run([
@@ -50,9 +51,10 @@ def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=2
                     "--sam-hit-only",
                     "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
                     "-t", str(threads)],
-                    check=True)
-
-def calculate_depth(assembly_id, output_dir):
+                    check=True,
+                    stderr=subprocess.DEVNULL)
+        
+def samtools_calculate_depth(assembly_id, output_dir):
     depth_files = os.path.join(output_dir, "depth_files")
     bam_files = os.path.join(output_dir, "bam_files")
 
@@ -67,8 +69,6 @@ def calculate_depth(assembly_id, output_dir):
         os.path.join(bam_files, f"{assembly_id}.sorted.bam")],
                     check=True,
                     stdout=open(os.path.join(depth_file), "w"))
-        
-
 def main(argv):
 	'''main function'''
 	parser = argparse.ArgumentParser(description="Read Alignment and Coverage Calculation.")
