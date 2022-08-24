@@ -41,11 +41,14 @@ def run_datasets_download(taxid, assembly_accession, working_dir):
 def download_reference_genome(taxid, working_dir):
     # check reference and representative genomes first
     #source = 'RefSeq'
-	def cut_text(text, text_length):
-		if len(text) > text_length-2:
-			return text[0:text_length-2] + ".."
-		else:
-			return text.ljust(text_length)
+    def cut_text(text, text_length):
+        try:
+            if len(text) > text_length-2:
+                return text[0:text_length-2] + ".."
+            else:
+                return text.ljust(text_length)
+        except TypeError:
+            return "".ljust(text_length)
 		
     assembly_accession = None
     res =None

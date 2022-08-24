@@ -67,7 +67,8 @@ def samtools_calculate_depth(assembly_id, output_dir):
     subprocess.run([
         "samtools",
         "depth",
-        os.path.join(bam_files, f"{assembly_id}.sorted.bam")],
+        os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
+        "-G", "SUPP"],
                     check=True,
                     stdout=open(os.path.join(depth_file), "w"))
 def main(argv):

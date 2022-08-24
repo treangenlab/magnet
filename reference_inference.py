@@ -42,10 +42,13 @@ def run_datasets_download(taxid, assembly_accession, working_dir):
     return grepOut.returncode
 
 def cut_text(text, text_length):
-	if len(text) > text_length-2:
-		return text[0:text_length-2] + ".."
-	else:
-		return text.ljust(text_length)
+    try:
+        if len(text) > text_length-2:
+            return text[0:text_length-2] + ".."
+        else:
+            return text.ljust(text_length)
+    except TypeError:
+        return "".ljust(text_length)
 		
 def download_reference_genome(taxid, working_dir):
     # check reference and representative genomes first
@@ -265,7 +268,8 @@ def samtools_calculate_depth(assembly_id, output_dir):
     subprocess.run([
         "samtools",
         "depth",
-        os.path.join(bam_files, f"{assembly_id}.sorted.bam")],
+        os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
+        "-G", "SUPP"],
                     check=True,
                     stdout=open(os.path.join(depth_file), "w"))
 
@@ -345,7 +349,7 @@ def calculate_depth(assembly_id, output_directory, min_depth=1):
                 genome_pos_count += 1
                 genome_totol_count += depth
     
-    if genome_totol_count == 0:
+    if genome_totol_count == 0 or reads_mapped == 0:
         breadth_coverage = 0
         depth_coverage = 0
         expected_breadth_coverage = 0
@@ -389,11 +393,16 @@ def calculate_depth_merged(assembly_ids, output_directory, min_depth=1):
                 mapping_stats = get_mapping_stats('merged', output_directory, genome_id)
                 reads_mapped_dict[assembly_id] += mapping_stats['reads mapped']
             
-        if genome_totol_count > 0:
+        if genome_totol_count > 0 and reads_mapped_dict[assembly_id] > 0:
             breadth_coverage_dict[assembly_id] = genome_pos_count/genome_length
             depth_coverage_dict[assembly_id] = genome_totol_count/genome_pos_count
             expected_breadth_coverage, std = get_expected_coverage(genome_length, reads_mapped_dict[assembly_id], genome_totol_count)
             expected_breadth_coverage_dict[assembly_id] = expected_breadth_coverage
+        elif genome_totol_count > 0 and reads_mapped_dict[assembly_id] == 0:
+            print("WARNING: Inconsistency between samtools depth and samtools stats for:", assembly_id)
+            print("Genome ID", "\t", "Stats Mapped Read Count", "\t", "# of Covered Positions")
+            for genome_id in genome_ids:
+                print(genome_id, "\t", get_mapping_stats('merged', output_directory, genome_id)['reads mapped'], "\t", genome_id_totol_count[genome_id])
             
     return breadth_coverage_dict, depth_coverage_dict, expected_breadth_coverage_dict
 
@@ -435,7 +444,8 @@ def cal_ani(assembly_id, output_directory, consensus_record_dict, ignore_del=Fal
                             if consensus_record_dict[record.id][idx] == base:
                                 matched_count += 1
             else:
-                print("No alignment found:", record.id, record.description)
+                continue
+                #print("No alignment found:", record.id, record.description)
                     
     if total_count != 0:
         return matched_count/total_count
