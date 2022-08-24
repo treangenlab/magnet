@@ -41,6 +41,15 @@ def run_datasets_download(taxid, assembly_accession, working_dir):
     
     return grepOut.returncode
 
+def cut_text(text, text_length):
+    try:
+        if len(text) > text_length-2:
+            return text[0:text_length-2] + ".."
+        else:
+            return text.ljust(text_length)
+    except TypeError:
+        return "".ljust(text_length)
+		
 def download_reference_genome(taxid, working_dir):
     # check reference and representative genomes first
     #source = 'RefSeq'
@@ -84,11 +93,14 @@ def download_reference_genome(taxid, working_dir):
             source = None
         assembly_level_ret = res['assemblies'][0]['assembly']['assembly_level']
         organism = res['assemblies'][0]['assembly']['org']['sci_name']
-        
-        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', organism, '\t', strain, '\t', assembly_level_ret)
+        try:
+            strain = res['assemblies'][0]['assembly']['org']['strain']
+        except KeyError:
+            strain = None
+		
+        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', cut_text(organism, 30), '\t', cut_text(strain, 10), '\t', assembly_level_ret)
         
         return_code = run_datasets_download(taxid, assembly_accession, working_dir)
-        
         if not return_code:
             download_completed = True
         else:
@@ -103,7 +115,7 @@ def download_reference_genome(taxid, working_dir):
         organism = None
         download_completed = False
         
-    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, download_completed
+    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, strain, download_completed
 
 def unpack(working_dir, output_dir):
     subprocess.run(['unzip', '-o', '-q', 
@@ -194,7 +206,7 @@ def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db):
     
     return reference_metadata
 
-def sort_samfile(assembly_id, output_dir, num_cores):
+def sort_samfile(assembly_id, output_dir, min_mapq, num_cores):
     '''converting and sorting alignment files'''
     bam_files = os.path.join(output_dir, "bam_files")
     sam_files = os.path.join(output_dir, "sam_files")
@@ -203,13 +215,13 @@ def sort_samfile(assembly_id, output_dir, num_cores):
         os.mkdir(bam_files)
 
     # covert sam file to binary bam file
-    subprocess.run([
+    samtools_view_res = subprocess.Popen([
         "samtools",
         "view",
         "-@", str(num_cores),
-        "-bS", os.path.join(sam_files, f"{assembly_id}.sam"),
-        "-o", os.path.join(bam_files, f"{assembly_id}.bam")],
-                    check=True)
+        "--min-MQ", str(min_mapq),
+        "-bS", os.path.join(sam_files, f"{assembly_id}.sam")],
+        stdout=subprocess.PIPE)
 
     # sort the bam file 
     subprocess.run([
@@ -217,8 +229,10 @@ def sort_samfile(assembly_id, output_dir, num_cores):
         "sort",
         "-@", str(num_cores),
         "-o", os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
-        "-O", "BAM", os.path.join(bam_files, f"{assembly_id}.bam")],
-                    check=True)
+        "-O", "BAM"],
+        stdin=samtools_view_res.stdout,
+        stderr=subprocess.DEVNULL,
+        check=True)
 
     # indexing the sorted bam file 
     subprocess.run([
@@ -240,7 +254,7 @@ def run_minimap2(input_fasta, reference_file, assembly_id, output_dir, threads=2
                     "--sam-hit-only",
                     "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
                     "-t", str(threads)],
-                    check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    check=True, stderr=subprocess.DEVNULL)
 
 def samtools_calculate_depth(assembly_id, output_dir):
     depth_files = os.path.join(output_dir, "depth_files")
@@ -254,7 +268,8 @@ def samtools_calculate_depth(assembly_id, output_dir):
     subprocess.run([
         "samtools",
         "depth",
-        os.path.join(bam_files, f"{assembly_id}.sorted.bam")],
+        os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
+        "-G", "SUPP"],
                     check=True,
                     stdout=open(os.path.join(depth_file), "w"))
 
@@ -333,9 +348,8 @@ def calculate_depth(assembly_id, output_directory, min_depth=1):
             if depth >= min_depth and genome_id in genome_ids:
                 genome_pos_count += 1
                 genome_totol_count += depth
-
     
-    if genome_totol_count == 0:
+    if genome_totol_count == 0 or reads_mapped == 0:
         breadth_coverage = 0
         depth_coverage = 0
         expected_breadth_coverage = 0
@@ -379,11 +393,16 @@ def calculate_depth_merged(assembly_ids, output_directory, min_depth=1):
                 mapping_stats = get_mapping_stats('merged', output_directory, genome_id)
                 reads_mapped_dict[assembly_id] += mapping_stats['reads mapped']
             
-        if genome_totol_count > 0:
+        if genome_totol_count > 0 and reads_mapped_dict[assembly_id] > 0:
             breadth_coverage_dict[assembly_id] = genome_pos_count/genome_length
             depth_coverage_dict[assembly_id] = genome_totol_count/genome_pos_count
             expected_breadth_coverage, std = get_expected_coverage(genome_length, reads_mapped_dict[assembly_id], genome_totol_count)
             expected_breadth_coverage_dict[assembly_id] = expected_breadth_coverage
+        elif genome_totol_count > 0 and reads_mapped_dict[assembly_id] == 0:
+            print("WARNING: Inconsistency between samtools depth and samtools stats for:", assembly_id)
+            print("Genome ID", "\t", "Stats Mapped Read Count", "\t", "# of Covered Positions")
+            for genome_id in genome_ids:
+                print(genome_id, "\t", get_mapping_stats('merged', output_directory, genome_id)['reads mapped'], "\t", genome_id_totol_count[genome_id])
             
     return breadth_coverage_dict, depth_coverage_dict, expected_breadth_coverage_dict
 
@@ -403,7 +422,7 @@ def merge_reference_fasta(assembly_ids, output_directory):
 		
     return merged_fasta
 
-def cal_ani(assembly_id, output_directory, consensus_record_dict):
+def cal_ani(assembly_id, output_directory, consensus_record_dict, ignore_del=False, del_count_as_match=False):
     reference_fasta = os.path.join(output_directory, 'reference_genomes', f'{assembly_id}.fasta')
 
     with open(reference_fasta, "r") as handle:
@@ -414,12 +433,20 @@ def cal_ani(assembly_id, output_directory, consensus_record_dict):
             if record.id in consensus_record_dict:
                 for idx, base in enumerate(record.seq):
                     if consensus_record_dict[record.id][idx] != 'N':
-                        total_count += 1
-                        if consensus_record_dict[record.id][idx] == base:
-                            matched_count += 1
+                        if consensus_record_dict[record.id][idx] == '*' and ignore_del:
+                            continue
+                        elif consensus_record_dict[record.id][idx] == '*':
+                            total_count += 1
+                            if del_count_as_match:
+                                matched_count += 1
+                        else:
+                            total_count += 1
+                            if consensus_record_dict[record.id][idx] == base:
+                                matched_count += 1
             else:
-                print("WARNING! Zero Coverage:", assembly_id, record.description)
-    
+                continue
+                #print("No alignment found:", record.id, record.description)
+                    
     if total_count != 0:
         return matched_count/total_count
     else:
@@ -482,6 +509,7 @@ def samtools_merged_consensus(output_directory, threads):
                     '--show-ins', 'no', 
                     '--show-del', 'yes', 
                     '-a',
+                    '--mode', "simple",
                     '--threads', str(threads),
                     merged_bam, 
                     '-o', os.path.join(output_directory, 'merged_consensus.fasta')],
@@ -495,7 +523,7 @@ def ani_summary(downloaded_assemblies, consensus_record_dict, output_directory):
     for idx, row in downloaded_assemblies.iterrows():
         if row['CS2'] != 0:
             assembly_id = row['Assembly Accession ID']
-            ani_list.append(cal_ani(assembly_id, output_directory, consensus_record_dict))
+            ani_list.append(cal_ani(assembly_id, output_directory, consensus_record_dict, ignore_del=True))
         else:
             ani_list.append(0)
             
@@ -577,6 +605,8 @@ def main(argv):
 	parser.add_argument("-c", "--min-coverage-score", type=float, default=0.7,
 						help="minimum coverage score for a species to be included \
 						in the second alignment process. [0.7]", )
+	parser.add_argument("--min-mapq", type=int, default=20,
+						help="minimum mapping quality for the alignment step. [20]", )
 	parser.add_argument("--online", action='store_true', help="Use online mode for searching reference genome. Requires internet access.")
 	parser.add_argument("-t", "--threads", type=int, default=1,
                         help="Number of threads. [1]")
@@ -588,6 +618,7 @@ def main(argv):
 	# input_fasta = "/home/Users/yl181/seqscreen_nano/ZymoBIOMICS.STD.Even.ont.raw_sequences/ERR3152364.downsampled.fasta"
 	input_fasta = args.fasta
 	threads = args.threads
+	min_mapq = args.min_mapq
 	
 	# working_directory = 'working'
 	working_directory = args.working
@@ -616,7 +647,7 @@ def main(argv):
 	for assembly_id in downloaded_assemblies['Assembly Accession ID']:
 		reference_fasta = os.path.join(working_directory, 'reference_genomes', f'{assembly_id}.fasta')
 		run_minimap2(input_fasta, reference_fasta, assembly_id, working_directory, threads=threads)
-		sort_samfile(assembly_id, working_directory, threads)
+		sort_samfile(assembly_id, working_directory, min_mapq, threads)
 		samtools_calculate_depth(assembly_id, working_directory)
 	
 	downloaded_assemblies = alignment_1_summary(downloaded_assemblies, working_directory)
@@ -626,7 +657,7 @@ def main(argv):
 	
 	reference_fasta = merge_reference_fasta(filtered_assemblies, working_directory)
 	run_minimap2(input_fasta, reference_fasta, 'merged', working_directory, threads=threads)
-	sort_samfile('merged', working_directory, threads)
+	sort_samfile('merged', working_directory, min_mapq, threads)
 	samtools_calculate_depth('merged', working_directory)
 
 	downloaded_assemblies = alignment_2_summary(downloaded_assemblies, working_directory)
