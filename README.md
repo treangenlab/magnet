@@ -11,6 +11,7 @@ This pipeline handles reference genome selection, download using NCBI Datasets, 
 - Biopython
 - Pandas
 - Ete3
+- BWA v0.7.17
 
 ## Getting started
 
