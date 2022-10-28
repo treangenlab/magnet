@@ -7,12 +7,13 @@ from collections import defaultdict
 from Bio import Entrez
 import pandas as pd
 
-def run_datasets_summary(taxid, flags, assembly_level='complete_genome'):
+def run_datasets_summary(taxid, flags, assembly_level='complete'):
     args = ['datasets', 'summary', 
             'genome',
             'taxon', str(taxid),
+            '--exclude-atypical',
             '--assembly-level', assembly_level,
-            '--limit', str(1)]
+            '--limit', '1']
     
     args = args + flags
     
@@ -27,10 +28,7 @@ def run_datasets_download(taxid, assembly_accession, working_dir):
     grepOut  = subprocess.run(['datasets', 'download', 
                                'genome',
                                'accession', str(assembly_accession),
-                               '--exclude-genomic-cds',
-                               '--exclude-gff3',
-                               '--exclude-protein',
-                               '--exclude-rna',
+                               '--include', 'genome',
                                '--filename', f"{working_dir}/{taxid}.zip",
                                '--no-progressbar'],
                               check=True, stderr=subprocess.DEVNULL)
@@ -81,16 +79,17 @@ def download_reference_genome(taxid, working_dir):
         assembly_level='scaffold'
         res = run_datasets_summary(taxid, [], assembly_level)
         
-    if res['total_count'] == 1:
-        assembly_accession = res['assemblies'][0]['assembly']['assembly_accession']
+    if res['total_count'] > 0:
+        assembly_accession = res['reports'][0]['accession']
         try:
-            source = res['assemblies'][0]['assembly']['annotation_metadata']['source']
+            source = res['reports'][0]['source_database']
         except KeyError:
             source = None
-        assembly_level_ret = res['assemblies'][0]['assembly']['assembly_level']
-        organism = res['assemblies'][0]['assembly']['org']['sci_name']
+        assembly_level_ret = res['reports'][0]['assembly_info']['assembly_level']
+        organism = res['reports'][0]['organism']['organism_name']
+        total_length = int(res['reports'][0]['assembly_stats']['total_sequence_length'])
         try:
-            strain = res['assemblies'][0]['assembly']['org']['strain']
+            strain = res['reports'][0]['organism']['infraspecific_names']['strain']
         except KeyError:
             strain = None
 		
@@ -109,9 +108,11 @@ def download_reference_genome(taxid, working_dir):
         representative = None
         assembly_level_ret = None
         organism = None
+        strain = None
+        total_length = None
         download_completed = False
         
-    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, strain, download_completed
+    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, strain, total_length, download_completed
 
 def unpack(working_dir, output_dir):
     subprocess.run(['unzip', '-o', '-q', 
@@ -149,6 +150,7 @@ def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db):
                                                'Assembly Level', 
                                                'Organism of Assembly',
                                                'Strain',
+											   'Total Length',
                                                'Downloaded'])
     
     taxonomy_name = []

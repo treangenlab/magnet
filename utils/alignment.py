@@ -4,7 +4,7 @@ import argparse
 import sys
 import pandas as pd
 
-def sort_samfile(assembly_id, output_dir, min_mapq, num_cores):
+def sort_samfile(assembly_id, output_dir, min_mapq, threads=20):
     '''converting and sorting alignment files'''
     bam_files = os.path.join(output_dir, "bam_files")
     sam_files = os.path.join(output_dir, "sam_files")
@@ -16,7 +16,7 @@ def sort_samfile(assembly_id, output_dir, min_mapq, num_cores):
     samtools_view_res = subprocess.Popen([
         "samtools",
         "view",
-        "-@", str(num_cores),
+        "-@", str(threads),
         "--min-MQ", str(min_mapq),
         "-bS", os.path.join(sam_files, f"{assembly_id}.sam")],
         stdout=subprocess.PIPE)
@@ -25,7 +25,7 @@ def sort_samfile(assembly_id, output_dir, min_mapq, num_cores):
     subprocess.run([
         "samtools",
         "sort",
-        "-@", str(num_cores),
+        "-@", str(threads),
         "-o", os.path.join(bam_files, f"{assembly_id}.sorted.bam"),
         "-O", "BAM"],
         stdin=samtools_view_res.stdout,
