@@ -1,6 +1,6 @@
-# Reference Finder
+# MAGnet
 
-This pipeline handles reference genome selection, download using NCBI Datasets, read alignment using Minimap2, and breadth and depth of genome coverage calculations.
+MAGnet is a computational tool that uses reference based method to refine taxonomic assignment and provide accurate abundance estimation. This pipeline handles reference genome selection, download using NCBI Datasets, read alignment using Minimap2, and breadth and depth of genome coverage calculations.
 
 ## Dependencies
 
