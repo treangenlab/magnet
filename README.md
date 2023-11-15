@@ -16,29 +16,37 @@ MAGnet is a computational tool that uses reference based method to refine taxono
 ## Getting started
 
 ```
-usage: reference_inference.py [-h] -i FASTA -o OUTPUT -w WORKING -d DATABASES [-m MIN_FRAC] [-c MIN_COVERAGE_SCORE]
-                              [--online] [-t THREADS]
+usage: magnet.py [-h] -c CLASSIFICATION -i FASTQ [-I FASTQ2] [-m {ont,illumina}] -o OUTPUT [-t TAXID_IDX]
+                 [-a ABUNDANCE_IDX] [--min-abundance MIN_ABUNDANCE] [--min-mapq MIN_MAPQ]
+                 [--min-covscore MIN_COVSCORE] [--threads THREADS] [--include-mag] [--subspecies]
 
-Repeated Read Alignment Module
+Universal Taxonomic Classification Verifier.
 
 optional arguments:
   -h, --help            show this help message and exit
-  -i FASTA, --fasta FASTA
-                        Sequences in fasta format.
+  -c CLASSIFICATION, --classification CLASSIFICATION
+                        Path to the Taxonomic Classification Report. Accepting csv/tsv file format, other text formats
+                        are treated as tsv.
+  -i FASTQ, --fastq FASTQ
+                        Path to the first fastq file.
+  -I FASTQ2, --fastq2 FASTQ2
+                        Path to the second fastq file for paired-end reads.
+  -m {ont,illumina}, --mode {ont,illumina}
+                        Modes for different sequencing platforms [ont, illumina]. Default:[ont]
   -o OUTPUT, --output OUTPUT
-                        Output directory.
-  -w WORKING, --working WORKING
-                        Working directory.
-  -d DATABASES, --databases DATABASES
-                        SeqScreenDB
-  -m MIN_FRAC, --min-frac MIN_FRAC
-                        minimum fraction of assigned reads for a species to be included in the first alignment
-                        process. [0.002]
-  -c MIN_COVERAGE_SCORE, --min-coverage-score MIN_COVERAGE_SCORE
-                        minimum coverage score for a species to be included in the second alignment process. [0.7]
-  --online              Use online mode for searching reference genome. Requires internet access.
-  -t THREADS, --threads THREADS
-                        Number of threads. [1]
+                        Path to the output directory.
+  -t TAXID_IDX, --taxid-idx TAXID_IDX
+                        The column index (0-based) of the taxids. Default:[0]
+  -a ABUNDANCE_IDX, --abundance-idx ABUNDANCE_IDX
+                        The column index (0-based) of the abundance. Default:[None]
+  --min-abundance MIN_ABUNDANCE
+                        Minimum abundance (0-1) for pre-filtering, exclude taxa below the threshold.
+  --min-mapq MIN_MAPQ   Minimum MAPQ for primary alignments. Default:[20]
+  --min-covscore MIN_COVSCORE
+                        Minimum Coverage Score for supplementary alignments. Default:[0.7]
+  --threads THREADS     Number of threads for Multi-threading. Default:[1]
+  --include-mag         Include metagenomic assemble genomes. Default:[False]
+  --subspecies          Verify taxonomic classification at subspecies rank. Default:[False]
 ```
 
 ## Example Output
