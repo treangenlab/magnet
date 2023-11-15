@@ -1,17 +1,27 @@
 import os
+import argparse
+import pathlib
+import sys
 import subprocess
-import time
+import math
 import json
-
+import warnings
+from io import StringIO
 from collections import defaultdict
-from Bio import Entrez
-import pandas as pd
+from multiprocessing import Pool, Manager
+from itertools import repeat
+warnings.filterwarnings("ignore")
 
-def run_datasets_summary(taxid, flags, assembly_level='complete'):
+import pandas as pd
+from ete3 import NCBITaxa
+from Bio import SeqIO
+
+def run_datasets_summary(taxid, flags, assembly_level='complete', mag_flag='exclude'):
     args = ['datasets', 'summary', 
             'genome',
             'taxon', str(taxid),
             '--exclude-atypical',
+            '--mag', mag_flag,
             '--assembly-level', assembly_level,
             '--limit', '1']
     
@@ -44,7 +54,7 @@ def cut_text(text, text_length):
     except TypeError:
         return "".ljust(text_length)
 	
-def download_reference_genome(taxid, working_dir):
+def download_reference_genome(taxid, working_dir, mag_flag='exclude'):
     # check reference and representative genomes first
     #source = 'RefSeq'
     assembly_accession = None
@@ -52,32 +62,32 @@ def download_reference_genome(taxid, working_dir):
     representative = True # assembly_category
     assembly_level = 'complete'
     
-    res = run_datasets_summary(taxid, ['--reference', '--assembly-source', 'refseq'])
+    res = run_datasets_summary(taxid, ['--reference', '--assembly-source', 'refseq'], mag_flag=mag_flag)
     
     # check complete assembly in RefSeq
     if res['total_count'] == 0:
         representative = False
-        res = run_datasets_summary(taxid, ['--assembly-source', 'refseq'])
+        res = run_datasets_summary(taxid, ['--assembly-source', 'refseq'], mag_flag=mag_flag)
 
     # check complete assembly
     if res['total_count'] == 0:
-        res = run_datasets_summary(taxid, [])
+        res = run_datasets_summary(taxid, [], mag_flag=mag_flag)
         #source = 'Assembly'
     
     # check chromosome assembly
     if res['total_count'] == 0:
         assembly_level = 'chromosome'
-        res = run_datasets_summary(taxid, [], assembly_level)
+        res = run_datasets_summary(taxid, [], assembly_level, mag_flag=mag_flag)
         
     # check contig assembly
     if res['total_count'] == 0:
         assembly_level='contig'
-        res = run_datasets_summary(taxid, [], assembly_level)
+        res = run_datasets_summary(taxid, [], assembly_level, mag_flag=mag_flag)
 
     # check scaffold assembly
     if res['total_count'] == 0:
         assembly_level='scaffold'
-        res = run_datasets_summary(taxid, [], assembly_level)
+        res = run_datasets_summary(taxid, [], assembly_level, mag_flag=mag_flag)
         
     if res['total_count'] > 0:
         assembly_accession = res['reports'][0]['accession']
@@ -118,9 +128,15 @@ def unpack(working_dir, output_dir):
     subprocess.run(['unzip', '-o', '-q', 
                     f'{working_dir}/*.zip', 
                     '-d', output_dir],
+                   stdout=subprocess.DEVNULL,
+                   stderr=subprocess.DEVNULL,
                    check=True)
 
 def cat_reference_genome(reference_metadata, output_dir, reference_genome_path='reference_genomes'):
+    """
+    1. concatenate fasta file(s) is multiple fasta files present
+    2. remove plasmid sequences
+    """
     if not os.path.exists(reference_genome_path):
         os.mkdir(reference_genome_path)
         
@@ -130,16 +146,28 @@ def cat_reference_genome(reference_metadata, output_dir, reference_genome_path='
         genome_path = os.path.join(output_dir, 'ncbi_dataset', 'data', assembly_id)
         output_fasta = os.path.join(reference_genome_path, f'{assembly_id}.fasta')
 
-        subprocess.Popen(f'cat {genome_path}/*.fna', shell=True, stdout=open(os.path.join(output_fasta), "w"))
+        cat_process = subprocess.Popen(f'cat {genome_path}/*.fna', shell=True, 
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.DEVNULL)
+        
+        multi_fasta = StringIO(cat_process.communicate()[0].decode("utf-8"))
+        seq_dict = SeqIO.to_dict(SeqIO.parse(multi_fasta, "fasta"))
+        non_plasmid_seqs = []
+        for seq in seq_dict:
+            if 'plasmid' not in seq_dict[seq].description:
+                non_plasmid_seqs.append(seq_dict[seq])
+                
+        with open(output_fasta, "w") as output_handle:
+            SeqIO.write(non_plasmid_seqs, output_handle, "fasta")
 
-def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db):
+def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db, mag_flag='exclude'):
     working_dir = os.path.join(output_directory, 'ncbi_downloads')
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
         
     download_result = []
     for taxid in taxid_queries:
-        download_result.append(download_reference_genome(taxid, working_dir))
+        download_result.append(download_reference_genome(taxid, working_dir, mag_flag=mag_flag))
         
     unpack(working_dir, output_directory)
     reference_metadata = pd.DataFrame(download_result,

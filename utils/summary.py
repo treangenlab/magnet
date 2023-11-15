@@ -1,13 +1,18 @@
 import os
-import subprocess
+import argparse
+import pathlib
 import sys
+import subprocess
 import math
+import json
+from io import StringIO
+import warnings
 from collections import defaultdict
-from Bio import Entrez
-import time
+from multiprocessing import Pool, Manager
+from itertools import repeat
+warnings.filterwarnings("ignore")
 
 import pandas as pd
-import json
 from ete3 import NCBITaxa
 from Bio import SeqIO
 
@@ -62,7 +67,73 @@ def alignment_2_summary(downloaded_assemblies, output_directory):
     
     return downloaded_assemblies
 
-def calculate_depth(assembly_id, output_directory, min_depth=1):
+def alignment_summary(downloaded_assemblies, output_directory, seq2assembly_dict, include_supp=True):
+    if include_supp:
+        coverage_file_name = 'secondary_coverage.tsv'
+        column_prefix = 'Secondary'
+    else:
+        coverage_file_name = 'primary_coverage.tsv'
+        column_prefix = 'Primary'
+    
+    columns = [f'{column_prefix} Breadth',
+               f'{column_prefix} Expected',
+               f'{column_prefix} Score',
+               f'{column_prefix} Depth']
+    
+    coverage_df = pd.read_csv(os.path.join(output_directory,
+                                           'coverage_files',
+                                           coverage_file_name),
+                              sep='\t')
+    
+    taxa_records = defaultdict(lambda: defaultdict(int))
+    for idx, row in coverage_df.iterrows():
+        taxa_reference = seq2assembly_dict[row['#rname']]
+        taxa_records[taxa_reference]['genome_length'] += row['endpos']
+        taxa_records[taxa_reference]['reads_mapped'] += row['numreads']
+        taxa_records[taxa_reference]['genome_totol_count'] += int(row['meandepth'] * row['endpos'])
+        taxa_records[taxa_reference]['covbases'] += row['covbases']
+    
+    breadth_coverage_list = []
+    depth_coverage_list = []
+    expected_breadth_coverage_list = []
+    coverage_score = []
+    for assembly_id in downloaded_assemblies['Assembly Accession ID']:
+        breadth_coverage, depth_coverage, expected_breadth_coverage = calculate_depth(assembly_id, taxa_records)
+        breadth_coverage_list.append(breadth_coverage)
+        depth_coverage_list.append(depth_coverage)
+        expected_breadth_coverage_list.append(expected_breadth_coverage)
+        if expected_breadth_coverage != 0:
+            coverage_score.append(min(breadth_coverage/expected_breadth_coverage, 1))
+        else:
+            coverage_score.append(0)
+        
+    downloaded_assemblies[columns[0]] = breadth_coverage_list
+    downloaded_assemblies[columns[1]] = expected_breadth_coverage_list
+    downloaded_assemblies[columns[2]] = coverage_score
+    downloaded_assemblies[columns[3]] = depth_coverage_list
+    
+    downloaded_assemblies.to_csv(os.path.join(output_directory, 'alignment.csv'), index=False)
+    
+    return downloaded_assemblies
+
+def calculate_depth(assembly_id, taxa_records):
+    genome_length = taxa_records[assembly_id]['genome_length']
+    covbases = taxa_records[assembly_id]['covbases']
+    genome_totol_count = taxa_records[assembly_id]['genome_totol_count']
+    reads_mapped = taxa_records[assembly_id]['reads_mapped']
+    
+    if genome_totol_count == 0 or reads_mapped == 0:
+        breadth_coverage = 0
+        depth_coverage = 0
+        expected_breadth_coverage = 0
+    else:
+        breadth_coverage = covbases/genome_length
+        depth_coverage = genome_totol_count/covbases
+        expected_breadth_coverage, std = get_expected_coverage(genome_length, reads_mapped, genome_totol_count)
+    
+    return breadth_coverage, depth_coverage, expected_breadth_coverage
+
+def _calculate_depth(assembly_id, output_directory, min_depth=1):
     depth_file = os.path.join(output_directory, 'depth_files', f"{assembly_id}.depth")
     
     genome_length, genome_ids = parse_reference_fasta(assembly_id, output_directory)
@@ -93,7 +164,7 @@ def calculate_depth(assembly_id, output_directory, min_depth=1):
     
     return breadth_coverage, depth_coverage, expected_breadth_coverage
 
-def calculate_depth_merged(assembly_ids, output_directory, min_depth=1):
+def _calculate_depth_merged(assembly_ids, output_directory, min_depth=1):
     depth_file = os.path.join(output_directory, 'depth_files', f"merged.depth")
     
     genome_id_pos_count = defaultdict(int)
@@ -211,18 +282,48 @@ def get_expected_coverage(genome_length, reads_mapped, genome_totol_count):
         std = 0
     return expected_coverage, std
 
-def call_present_absent(downloaded_assemblies):
+def _call_present_absent(downloaded_assemblies):
     status = []
     cs = downloaded_assemblies["Coverage Score"].tolist()
     cs2 = downloaded_assemblies["CS2"].tolist()
     consensus_ani = downloaded_assemblies["Consensus ANI"].tolist()
+    bc = downloaded_assemblies["Breadth Coverage"].tolist()
+    bc2 = downloaded_assemblies['BC2'].tolist()
     
     for i in range(len(cs)):
-        if consensus_ani[i] > 0.97:
+        if consensus_ani[i] > 0.97 and bc2[i] > 0.2:
             status.append("Present")
         else:
-            if cs2[i] - cs[i] > -0.1:
-                status.append("Present")
+            if cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1 and consensus_ani[i] >= 0.70:
+                if consensus_ani[i] > 0.9:
+                    status.append("Present")
+                else:
+                    status.append("Genus Present")
+            else:
+                status.append("Absent")
+            
+    downloaded_assemblies["Presence/Absence"] = status
+    return downloaded_assemblies
+
+def call_present_absent(downloaded_assemblies, min_coverage_score):
+    status = []
+    cs = downloaded_assemblies["Secondary Score"].tolist()
+    cs2 = downloaded_assemblies["Primary Score"].tolist()
+    consensus_ani = downloaded_assemblies["Consensus ANI"].tolist()
+    bc = downloaded_assemblies["Secondary Breadth"].tolist()
+    bc2 = downloaded_assemblies['Primary Breadth'].tolist()
+    
+    for i in range(len(cs)):
+        if cs[i] < min_coverage_score:
+            status.append("Absent")
+        elif consensus_ani[i] > 0.97 and bc2[i] > 0.2:
+            status.append("Present")
+        else:
+            if cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1 and consensus_ani[i] >= 0.70:
+                if consensus_ani[i] > 0.9:
+                    status.append("Present")
+                else:
+                    status.append("Genus Present")
             else:
                 status.append("Absent")
             
