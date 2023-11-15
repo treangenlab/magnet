@@ -5,12 +5,12 @@ MAGnet is a computational tool that uses reference based method to refine taxono
 ## Dependencies
 
 - Python 3.9
-- NCBI Datasets v13.30.2
+- NCBI Datasets v15.27.1
 - Minimap2 v2.24-r1122
 - Samtools v1.15.1
 - Biopython
 - Pandas
-- Ete3
+- Ete3 v3.1.2
 - BWA v0.7.17
 
 ## Getting started
