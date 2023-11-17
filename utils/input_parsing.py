@@ -46,7 +46,7 @@ def filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom, ret_su
 
 def parsing_input_f(input_file, sep, taxid_col_idx, abundance_col_idx, min_abundance):
     input_df = pd.DataFrame(columns = ['tax_id', 'abundance'])
-    taxid_col_values_df = pd.read_csv(input_file, sep=sep, usecols=[taxid_col_idx])
+    taxid_col_values_df = pd.read_csv(input_file, sep=sep, usecols=[taxid_col_idx], dtype=str)
     taxid_col_values = taxid_col_values_df[taxid_col_values_df.columns[0]].values
     input_df['tax_id'] = list(taxid_col_values)
     if abundance_col_idx:

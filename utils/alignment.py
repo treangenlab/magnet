@@ -52,7 +52,6 @@ def sort_samfile(assembly_id, aligner_output, output_dir, min_mapq, threads=20):
                     check=True)
 
 def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=20):
-
     minimap2_output = subprocess.Popen(["minimap2", 
                                         "-ax", "map-ont", 
                                         reference_file, 
@@ -64,68 +63,37 @@ def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=2
                                        stderr=subprocess.DEVNULL)
     
     return minimap2_output
-#     sam_files = os.path.join(output_dir, "sam_files")
-
-#     if not os.path.exists(sam_files):
-#         os.mkdir(sam_files)
-#     try:
-#         subprocess.run(["minimap2", 
-#                         "-ax", "map-ont", 
-#                         reference_file, 
-#                         input_fastq,
-#                         "-N", str(50),
-#                         "--sam-hit-only",
-#                         "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-#                         "-t", str(threads)],
-#                         check=True,
-#                         stderr=subprocess.DEVNULL)
-#     except subprocess.CalledProcessError:
-#         return 1
-#     return 0
 
 def run_bwa(input_fastq_1, input_fastq_2, reference_file, assembly_id, output_dir, threads=20):
     '''map the reads to the reference'''
-    sam_files = os.path.join(output_dir, "sam_files")
-
-    if not os.path.exists(sam_files):
-        os.mkdir(sam_files)
-
     subprocess.run(["bwa", "index", reference_file], 
                     stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
                     stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
                     check=True)
 
     if input_fastq_2:
-        try:
-            subprocess.run([
-                "bwa",
-                "mem",
-                "-t", str(threads),
-                "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-                reference_file,
-                input_fastq_1,
-                input_fastq_2],
-                    stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
-                    stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
-                    check=True)
-        except subprocess.CalledProcessError:
-            return 1
+        bwa_mem_output = subprocess.Popen([
+            "bwa",
+            "mem",
+            "-a",
+            "-t", str(threads),
+            reference_file,
+            input_fastq_1,
+            input_fastq_2],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"))
     else:
-        try:
-            subprocess.run([
-                "bwa",
-                "mem",
-                "-t", str(threads),
-                "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-                reference_file,
-                input_fastq_1],
-                    stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
-                    stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
-                    check=True)
-        except subprocess.CalledProcessError:
-            return 1
-
-    return 0
+        bwa_mem_output = subprocess.Popen([
+            "bwa",
+            "mem",
+            "-a",
+            "-t", str(threads),
+            reference_file,
+            input_fastq_1],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"))
+    
+    return bwa_mem_output
         
 def _samtools_calculate_depth(assembly_id, output_dir, exclude_supp=True):
     depth_files = os.path.join(output_dir, "depth_files")

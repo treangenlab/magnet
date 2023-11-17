@@ -35,9 +35,9 @@ def main():
     parser.add_argument("--min-mapq", type=int, required=False, help="Minimum MAPQ for primary alignments. Default:[20]", default=20)
     parser.add_argument("--min-covscore", type=float, required=False, help="Minimum Coverage Score for supplementary alignments. Default:[0.7]", default=0.7)
     parser.add_argument("--threads", type=int, required=False, help="Number of threads for Multi-threading. Default:[1]", default=1)
-    parser.add_argument("--include-mag", action='store_true', required=False, help="Include metagenomic assemble genomes. Default:[False]")
+    parser.add_argument("--include-mag", action='store_true', required=False, help="Include metagenomic assemble genomes. Default:[off]")
     parser.set_defaults(include_mag=False)
-    parser.add_argument("--subspecies", action='store_true', required=False, help="Verify taxonomic classification at subspecies rank. Default:[False]")
+    parser.add_argument("--subspecies", action='store_true', required=False, help="Verify taxonomic classification at subspecies rank. Default:[off]")
     parser.set_defaults(subspecies=False)
 
     args = parser.parse_args()
@@ -79,8 +79,12 @@ def main():
     downloaded_assemblies = reference_metadata[reference_metadata['Downloaded']]
     seq2assembly_dict = get_seq2assembly_dict(working_directory, downloaded_assemblies)
     reference_fasta = merge_reference_fasta(list(downloaded_assemblies['Assembly Accession ID']), working_directory)
-
-    aligner_output = run_minimap2(input_fastq, reference_fasta, 'merged', working_directory, threads=threads)
+    
+    if mode == 'ont':
+        aligner_output = run_minimap2(input_fastq, reference_fasta, 'merged', working_directory, threads=threads)
+    if mode == 'illumina':
+        aligner_output = run_bwa(input_fastq, input_fastq2, reference_fasta, 'merged', working_directory, threads=threads)
+        
     sort_samfile('merged', aligner_output, working_directory, min_mapq=0, threads=threads)
     
     coverage_files = os.path.join(working_directory, "coverage_files")
