@@ -316,7 +316,9 @@ def call_present_absent(downloaded_assemblies, min_coverage_score):
     for i in range(len(cs)):
         if cs[i] < min_coverage_score:
             status.append("Absent")
-        elif:
+        elif consensus_ani[i] > 0.97 and bc2[i] > 0.2:
+            status.append("Present")
+        else:
             if cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1 and consensus_ani[i] >= 0.70:
                 if consensus_ani[i] > 0.9:
                     status.append("Present")
@@ -324,9 +326,5 @@ def call_present_absent(downloaded_assemblies, min_coverage_score):
                     status.append("Genus Present")
             else:
                 status.append("Absent")
-        else consensus_ani[i] > 0.97 and bc2[i] > 0.2:
-            status.append("Present")
-            
     downloaded_assemblies["Presence/Absence"] = status
     return downloaded_assemblies
-
