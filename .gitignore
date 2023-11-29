@@ -3,3 +3,4 @@ taxdump.tar.gz
 utils/__pycache__/
 utils/.ipynb_checkpoints/
 nohup.out
+dev.ipynb

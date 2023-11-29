@@ -16,7 +16,11 @@ from ete3 import NCBITaxa
 from Bio import SeqIO
 
 def get_species_taxid(taxid, ncbi_taxa_db, valid_kingdom, ret_subspecies):
-    lineage = ncbi_taxa_db.get_lineage(taxid)
+    try:
+        lineage = ncbi_taxa_db.get_lineage(taxid)
+    except ValueError:
+        return None 
+    
     if bool(set(lineage) & valid_kingdom):
         taxid2rank_dict = ncbi_taxa_db.get_rank(lineage)
         species_rank_visited = False
@@ -42,6 +46,9 @@ def filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom, ret_su
         else:
             print(row['tax_id'], 'is not a valid taxid.')
             continue
+    
+    valid_taxids = list(set(valid_taxids))
+    print(f"num_species: {len(valid_taxids)}")
     return valid_taxids
 
 def parsing_input_f(input_file, sep, taxid_col_idx, abundance_col_idx, min_abundance):
@@ -49,12 +56,14 @@ def parsing_input_f(input_file, sep, taxid_col_idx, abundance_col_idx, min_abund
     taxid_col_values_df = pd.read_csv(input_file, sep=sep, usecols=[taxid_col_idx], dtype=str, index_col=False)
     taxid_col_values = taxid_col_values_df[taxid_col_values_df.columns[0]].values
     input_df['tax_id'] = list(taxid_col_values)
-    if abundance_col_idx:
+    if abundance_col_idx != None:
         abundance_col_values_df = pd.read_csv(input_file, sep=sep, usecols=[abundance_col_idx])
         abundance_col_values = abundance_col_values_df[abundance_col_values_df.columns[0]].values
         input_df['abundance'] = list(abundance_col_values)
     else:
         min_abundance = 0
+    
+    print(f'min_abundance: {min_abundance}')
     return input_df, min_abundance
 
 def get_seq2assembly_dict(working_directory, downloaded_assemblies):

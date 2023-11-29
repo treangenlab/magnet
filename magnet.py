@@ -16,7 +16,7 @@ from ete3 import NCBITaxa
 from Bio import SeqIO
 
 from utils.reference_finder import prepare_reference_genomes
-from utils.alignment import run_minimap2, run_bwa, sort_samfile, samtools_calculate_coverage
+from utils.alignment import run_minimap2, run_bowtie2, sort_samfile, samtools_calculate_coverage
 from utils.summary import alignment_summary, merge_reference_fasta, call_present_absent
 from utils.ani import samtools_merged_consensus, ani_summary
 from utils.input_parsing import parsing_input_f, filter_input_df, get_seq2assembly_dict
@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--min-mapq", type=int, required=False, help="Minimum MAPQ for primary alignments. Default:[20]", default=20)
     parser.add_argument("--min-covscore", type=float, required=False, help="Minimum Coverage Score for supplementary alignments. Default:[0.7]", default=0.7)
     parser.add_argument("--threads", type=int, required=False, help="Number of threads for Multi-threading. Default:[1]", default=1)
+    parser.add_argument("--kingdom", type=str, help="A comma separated list of taxids of valid kingdoms. Default:[2,4751,2157,10239]", default='2,4751,2157,10239')
     parser.add_argument("--include-mag", action='store_true', required=False, help="Include metagenomic assemble genomes. Default:[off]")
     parser.set_defaults(include_mag=False)
     parser.add_argument("--subspecies", action='store_true', required=False, help="Verify taxonomic classification at subspecies rank. Default:[off]")
@@ -54,6 +55,11 @@ def main():
     min_mapq = args.min_mapq
     min_coverage_score = args.min_covscore
     threads = args.threads
+    valid_kingdom_str = args.kingdom
+
+    valid_kingdom = set()
+    for i in valid_kingdom_str.split(','):
+        valid_kingdom.add(int(i))
 
     if args.include_mag:
         mag_flag = 'all'
@@ -72,7 +78,7 @@ def main():
         
     input_df, min_abundance = parsing_input_f(input_tsv, sep, taxid_col_idx, abundance_col_idx, min_abundance)
     # make valid_kingdom a variable?
-    valid_taxids = filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom={2, 4751, 2157, 10239}, ret_subspecies=call_subspecies)
+    valid_taxids = filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom=valid_kingdom, ret_subspecies=call_subspecies)
     
     # can be parallelized
     reference_metadata = prepare_reference_genomes(valid_taxids, working_directory, ncbi_taxa_db, mag_flag=mag_flag)
@@ -83,7 +89,7 @@ def main():
     if mode == 'ont':
         aligner_output = run_minimap2(input_fastq, reference_fasta, 'merged', working_directory, threads=threads)
     if mode == 'illumina':
-        aligner_output = run_bwa(input_fastq, input_fastq2, reference_fasta, 'merged', working_directory, threads=threads)
+        aligner_output = run_bowtie2(input_fastq, input_fastq2, reference_fasta, 'merged', working_directory, threads=threads)
         
     sort_samfile('merged', aligner_output, working_directory, min_mapq=0, threads=threads)
     

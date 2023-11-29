@@ -94,6 +94,37 @@ def run_bwa(input_fastq_1, input_fastq_2, reference_file, assembly_id, output_di
                 stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"))
     
     return bwa_mem_output
+
+def run_bowtie2(input_fastq_1, input_fastq_2, reference_file, assembly_id, output_dir, threads=20):
+    '''map the reads to the reference'''
+    subprocess.run(["bowtie2-build", reference_file, os.path.join(output_dir, assembly_id)], 
+                    stdout=open(os.path.join(output_dir, "bowtie2.log"), "a"),
+                    stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"),
+                    check=True)
+
+    if input_fastq_2:
+        bowtie2_output = subprocess.Popen([
+            "bowtie2",
+            "--local",
+            "-a", #str(50),
+            "--threads", str(threads),
+            "-x", os.path.join(output_dir, assembly_id),
+            "-1", input_fastq_1,
+            "-2", input_fastq_2],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"))
+    else:
+        bowtie2_output = subprocess.Popen([
+            "bowtie2",
+            "--local",
+            "-a", #str(50),
+            "--threads", str(threads),
+            "-x", os.path.join(output_dir, assembly_id),
+            "-1", input_fastq_1],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"))
+    
+    return bowtie2_output
         
 def _samtools_calculate_depth(assembly_id, output_dir, exclude_supp=True):
     depth_files = os.path.join(output_dir, "depth_files")
@@ -130,7 +161,7 @@ def samtools_calculate_coverage(output_dir, include_supp=False):
     else:
         # samtools coverage merged.sorted.bam -q 20 > primary_coverage.tsv
         coverage_file = os.path.join(coverage_files, f"primary_coverage.tsv")
-        command += ['-q', str(20)]
+        command += ['-q', str(0)]
 
     subprocess.run(command,
                     check=True,
