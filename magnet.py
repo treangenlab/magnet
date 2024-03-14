@@ -40,6 +40,8 @@ def main():
     parser.set_defaults(include_mag=False)
     parser.add_argument("--subspecies", action='store_true', required=False, help="Verify taxonomic classification at subspecies rank. Default:[off]")
     parser.set_defaults(subspecies=False)
+    parser.add_argument("--accession", action='store_true', required=False, help="Take accession ids as taxids. Does not work with min-abundance. Default:[off]")
+    parser.set_defaults(accession=False)
 
     args = parser.parse_args()
     
@@ -65,7 +67,8 @@ def main():
         mag_flag = 'all'
     else:
         mag_flag = 'exclude'
-
+        
+    accession_flag = args.accession
     call_subspecies = args.subspecies
 
     sep = '\t'
@@ -75,13 +78,20 @@ def main():
     ncbi_taxa_db = NCBITaxa()
     if not os.path.exists(working_directory):
         os.mkdir(working_directory)
-        
-    input_df, min_abundance = parsing_input_f(input_tsv, sep, taxid_col_idx, abundance_col_idx, min_abundance)
-    # make valid_kingdom a variable?
-    valid_taxids = filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom=valid_kingdom, ret_subspecies=call_subspecies)
+    
+    if accession_flag:
+        abundance_col_idx = None
+        min_abundance = 0
+        input_df, min_abundance = parsing_input_f(input_tsv, sep, taxid_col_idx, abundance_col_idx, min_abundance)
+        valid_taxids = list(input_df['tax_id'].values)
+    else:
+        input_df, min_abundance = parsing_input_f(input_tsv, sep, taxid_col_idx, abundance_col_idx, min_abundance)
+        # make valid_kingdom a variable?
+        valid_taxids = filter_input_df(input_df, min_abundance, ncbi_taxa_db, valid_kingdom=valid_kingdom, ret_subspecies=call_subspecies)
+
     
     # can be parallelized
-    reference_metadata = prepare_reference_genomes(valid_taxids, working_directory, ncbi_taxa_db, mag_flag=mag_flag)
+    reference_metadata = prepare_reference_genomes(valid_taxids, working_directory, ncbi_taxa_db, accession_flag=accession_flag, mag_flag=mag_flag)
     downloaded_assemblies = reference_metadata[reference_metadata['Downloaded']]
     seq2assembly_dict = get_seq2assembly_dict(working_directory, downloaded_assemblies)
     reference_fasta = merge_reference_fasta(list(downloaded_assemblies['Assembly Accession ID']), working_directory)

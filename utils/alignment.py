@@ -161,7 +161,8 @@ def samtools_calculate_coverage(output_dir, include_supp=False):
     else:
         # samtools coverage merged.sorted.bam -q 20 > primary_coverage.tsv
         coverage_file = os.path.join(coverage_files, f"primary_coverage.tsv")
-        command += ['-q', str(0)]
+        command += ['-q', str(20)]
+        # command += ['--ff', 'UNMAP,QCFAIL,DUP', '-q', str(20)]
 
     subprocess.run(command,
                     check=True,

@@ -318,13 +318,58 @@ def call_present_absent(downloaded_assemblies, min_coverage_score):
             status.append("Absent")
         elif consensus_ani[i] > 0.97 and bc2[i] > 0.2:
             status.append("Present")
-        else:
-            if cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1 and consensus_ani[i] >= 0.70:
-                if consensus_ani[i] > 0.9:
-                    status.append("Present")
-                else:
-                    status.append("Genus Present")
+        elif cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1:
+            if consensus_ani[i] >= 0.70:
+                status.append("Present")
             else:
                 status.append("Absent")
+        else:
+            status.append("Absent")
     downloaded_assemblies["Presence/Absence"] = status
     return downloaded_assemblies
+
+# def call_present_absent(downloaded_assemblies, min_coverage_score):
+#     status = []
+#     cs = downloaded_assemblies["Secondary Score"].tolist()
+#     cs2 = downloaded_assemblies["Primary Score"].tolist()
+#     consensus_ani = downloaded_assemblies["Consensus ANI"].tolist()
+#     bc = downloaded_assemblies["Secondary Breadth"].tolist()
+#     bc2 = downloaded_assemblies['Primary Breadth'].tolist()
+    
+#     for i in range(len(cs)):
+#         if cs[i] < min_coverage_score:
+#             status.append("Absent")
+#         elif consensus_ani[i] > 0.97 and bc2[i] > 0.2:
+#             status.append("Present")
+#         else:
+#             if cs[i] - cs2[i] < 0.1 and bc[i] - bc2[i] < 0.1 and consensus_ani[i] >= 0.70:
+#                 if consensus_ani[i] > 0.9:
+#                     status.append("Present")
+#                 else:
+#                     status.append("Genus Present")
+#             else:
+#                 status.append("Absent")
+#     downloaded_assemblies["Presence/Absence"] = status
+#     return downloaded_assemblies
+
+# def call_present_absent(downloaded_assemblies, min_coverage_score):
+#     status = []
+#     cs = downloaded_assemblies["Secondary Score"].tolist()
+#     cs2 = downloaded_assemblies["Primary Score"].tolist()
+#     consensus_ani = downloaded_assemblies["Consensus ANI"].tolist()
+#     bc = downloaded_assemblies["Secondary Breadth"].tolist()
+#     bc2 = downloaded_assemblies['Primary Breadth'].tolist()
+    
+#     for i in range(len(cs)):
+#         if cs[i] < min_coverage_score:
+#             status.append("Absent")
+#         elif consensus_ani[i] > 0.97:
+#             status.append("Present")
+#         else:
+#             if cs2[i] - cs[i] > -0.1:
+#                 status.append("Present")
+#             else:
+#                 status.append("Absent")
+            
+#     downloaded_assemblies["Presence/Absence"] = status
+#     return downloaded_assemblies

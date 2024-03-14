@@ -160,14 +160,17 @@ def cat_reference_genome(reference_metadata, output_dir, reference_genome_path='
         with open(output_fasta, "w") as output_handle:
             SeqIO.write(non_plasmid_seqs, output_handle, "fasta")
 
-def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db, mag_flag='exclude'):
+def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db, accession_flag=False, mag_flag='exclude'):
     working_dir = os.path.join(output_directory, 'ncbi_downloads')
     if not os.path.exists(working_dir):
         os.mkdir(working_dir)
         
-    download_result = []
+    download_result = []        
     for taxid in taxid_queries:
-        download_result.append(download_reference_genome(taxid, working_dir, mag_flag=mag_flag))
+        if accession_flag:
+            download_result.append(download_reference_accession(taxid, working_dir))
+        else:
+            download_result.append(download_reference_genome(taxid, working_dir, mag_flag=mag_flag))
         
     unpack(working_dir, output_directory)
     reference_metadata = pd.DataFrame(download_result,
@@ -190,3 +193,60 @@ def prepare_reference_genomes(taxid_queries, output_directory, ncbi_taxa_db, mag
     cat_reference_genome(reference_metadata, output_directory, reference_genome_path=os.path.join(output_directory, 'reference_genomes'))
     
     return reference_metadata
+
+def download_reference_accession(accession, working_dir):
+    # check reference and representative genomes first
+    #source = 'RefSeq'
+    assembly_accession = accession
+    representative = None
+    res = None
+    res = run_datasets_accession_summary(assembly_accession)
+    
+    if res['total_count'] > 0:
+        taxid = res['reports'][0]['organism']['tax_id']
+        assembly_accession = res['reports'][0]['accession']
+        try:
+            source = res['reports'][0]['source_database']
+        except KeyError:
+            source = None
+        assembly_level_ret = res['reports'][0]['assembly_info']['assembly_level']
+        organism = res['reports'][0]['organism']['organism_name']
+        total_length = int(res['reports'][0]['assembly_stats']['total_sequence_length'])
+        try:
+            strain = res['reports'][0]['organism']['infraspecific_names']['strain']
+        except KeyError:
+            strain = None
+		
+        print(str(taxid).ljust(10), '\t', assembly_accession, '\t', cut_text(organism, 30), '\t', cut_text(strain, 10), '\t', assembly_level_ret)
+        
+        return_code = run_datasets_download(taxid, assembly_accession, working_dir)
+        if not return_code:
+            download_completed = True
+        else:
+            download_completed = False
+            
+    else:
+        print(str(accession).ljust(10), '\t', 'Genome Not Found.')
+        taxid = None
+        assembly_accession = None
+        source = None
+        representative = None
+        assembly_level_ret = None
+        organism = None
+        strain = None
+        total_length = None
+        download_completed = False
+        
+    return taxid, assembly_accession, source, representative, assembly_level_ret, organism, strain, total_length, download_completed
+
+def run_datasets_accession_summary(accession):
+    args = ['datasets', 'summary', 
+            'genome',
+            'accession', accession]
+    
+    grepOut  = subprocess.run(args,
+                              universal_newlines=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL)
+    
+    return json.loads(grepOut.stdout.strip())
