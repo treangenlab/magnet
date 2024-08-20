@@ -1,13 +1,24 @@
 import os
-import subprocess
 import argparse
+import pathlib
 import sys
-import pandas as pd
+import subprocess
+import math
+import warnings
+from io import StringIO
+from collections import defaultdict
+from multiprocessing import Pool, Manager
+from itertools import repeat
+warnings.filterwarnings("ignore")
 
-def sort_samfile(assembly_id, output_dir, min_mapq, threads=20):
+import pandas as pd
+from ete3 import NCBITaxa
+from Bio import SeqIO
+
+def sort_samfile(assembly_id, aligner_output, output_dir, min_mapq, threads=20):
     '''converting and sorting alignment files'''
     bam_files = os.path.join(output_dir, "bam_files")
-    sam_files = os.path.join(output_dir, "sam_files")
+    # sam_files = os.path.join(output_dir, "sam_files")
     
     if not os.path.exists(bam_files):
         os.mkdir(bam_files)
@@ -18,7 +29,8 @@ def sort_samfile(assembly_id, output_dir, min_mapq, threads=20):
         "view",
         "-@", str(threads),
         "--min-MQ", str(min_mapq),
-        "-bS", os.path.join(sam_files, f"{assembly_id}.sam")],
+        "-bS"], #os.path.join(sam_files, f"{assembly_id}.sam")
+        stdin=aligner_output.stdout,
         stdout=subprocess.PIPE)
 
     # sort the bam file 
@@ -40,71 +52,81 @@ def sort_samfile(assembly_id, output_dir, min_mapq, threads=20):
                     check=True)
 
 def run_minimap2(input_fastq, reference_file, assembly_id, output_dir, threads=20):
-    sam_files = os.path.join(output_dir, "sam_files")
-
-    if not os.path.exists(sam_files):
-        os.mkdir(sam_files)
-
-    try:
-        subprocess.run(["minimap2", 
-                        "-ax", "map-ont", 
-                        reference_file, 
-                        input_fastq, 
-                        "--sam-hit-only",
-                        "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-                        "-t", str(threads)],
-                        check=True,
-                        stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError:
-        return 1
-
-    return 0
+    minimap2_output = subprocess.Popen(["minimap2", 
+                                        "-ax", "map-ont", 
+                                        reference_file, 
+                                        input_fastq,
+                                        "-N", str(50),
+                                        "--sam-hit-only",
+                                        "-t", str(threads)],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.DEVNULL)
+    
+    return minimap2_output
 
 def run_bwa(input_fastq_1, input_fastq_2, reference_file, assembly_id, output_dir, threads=20):
     '''map the reads to the reference'''
-    sam_files = os.path.join(output_dir, "sam_files")
-
-    if not os.path.exists(sam_files):
-        os.mkdir(sam_files)
-
     subprocess.run(["bwa", "index", reference_file], 
                     stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
                     stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
                     check=True)
 
     if input_fastq_2:
-        try:
-            subprocess.run([
-                "bwa",
-                "mem",
-                "-t", str(threads),
-                "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-                reference_file,
-                input_fastq_1,
-                input_fastq_2],
-                    stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
-                    stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
-                    check=True)
-        except subprocess.CalledProcessError:
-            return 1
+        bwa_mem_output = subprocess.Popen([
+            "bwa",
+            "mem",
+            "-a",
+            "-t", str(threads),
+            reference_file,
+            input_fastq_1,
+            input_fastq_2],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"))
     else:
-        try:
-            subprocess.run([
-                "bwa",
-                "mem",
-                "-t", str(threads),
-                "-o", os.path.join(sam_files, f"{assembly_id}.sam"),
-                reference_file,
-                input_fastq_1],
-                    stdout=open(os.path.join(output_dir, "bwa_mem.log"), "a"),
-                    stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"),
-                    check=True)
-        except subprocess.CalledProcessError:
-            return 1
+        bwa_mem_output = subprocess.Popen([
+            "bwa",
+            "mem",
+            "-a",
+            "-t", str(threads),
+            reference_file,
+            input_fastq_1],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bwa_mem.err"), "a"))
+    
+    return bwa_mem_output
 
-    return 0
+def run_bowtie2(input_fastq_1, input_fastq_2, reference_file, assembly_id, output_dir, threads=20):
+    '''map the reads to the reference'''
+    subprocess.run(["bowtie2-build", reference_file, os.path.join(output_dir, assembly_id)], 
+                    stdout=open(os.path.join(output_dir, "bowtie2.log"), "a"),
+                    stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"),
+                    check=True)
+
+    if input_fastq_2:
+        bowtie2_output = subprocess.Popen([
+            "bowtie2",
+            "--local",
+            "-a", #str(50),
+            "--threads", str(threads),
+            "-x", os.path.join(output_dir, assembly_id),
+            "-1", input_fastq_1,
+            "-2", input_fastq_2],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"))
+    else:
+        bowtie2_output = subprocess.Popen([
+            "bowtie2",
+            "--local",
+            "-a", #str(50),
+            "--threads", str(threads),
+            "-x", os.path.join(output_dir, assembly_id),
+            "-1", input_fastq_1],
+                stdout=subprocess.PIPE,
+                stderr=open(os.path.join(output_dir, "bowtie2.err"), "a"))
+    
+    return bowtie2_output
         
-def samtools_calculate_depth(assembly_id, output_dir, exclude_supp=True):
+def _samtools_calculate_depth(assembly_id, output_dir, exclude_supp=True):
     depth_files = os.path.join(output_dir, "depth_files")
     bam_files = os.path.join(output_dir, "bam_files")
 
@@ -123,6 +145,28 @@ def samtools_calculate_depth(assembly_id, output_dir, exclude_supp=True):
     subprocess.run(command,
                     check=True,
                     stdout=open(os.path.join(depth_file), "w"))
+
+def samtools_calculate_coverage(output_dir, include_supp=False):
+    coverage_files = os.path.join(output_dir, "coverage_files")
+    bam_files = os.path.join(output_dir, "bam_files")
+
+    command = ["samtools",
+               "coverage",
+               os.path.join(bam_files, f"merged.sorted.bam")]
+    
+    if include_supp:
+        # samtools coverage --ff UNMAP,QCFAIL,DUP -q 0 merged.sorted.bam > secondary_coverage.tsv
+        coverage_file = os.path.join(coverage_files, f"secondary_coverage.tsv")
+        command += ['--ff', 'UNMAP,QCFAIL,DUP', '-q', str(0)]
+    else:
+        # samtools coverage merged.sorted.bam -q 20 > primary_coverage.tsv
+        coverage_file = os.path.join(coverage_files, f"primary_coverage.tsv")
+        command += ['-q', str(20)]
+        # command += ['--ff', 'UNMAP,QCFAIL,DUP', '-q', str(20)]
+
+    subprocess.run(command,
+                    check=True,
+                    stdout=open(coverage_file, "w"))
 	
 def main(argv):
 	'''main function'''

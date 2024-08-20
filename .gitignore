@@ -1,4 +1,8 @@
 .ipynb_checkpoints/
 taxdump.tar.gz
-.ipynb_checkpoints/.ipynb_checkpoints
 utils/__pycache__/
+utils/.ipynb_checkpoints/
+nohup.out
+dev.ipynb
+within_cluster.ipynb
+magnet_strain.py
