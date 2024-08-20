@@ -49,19 +49,33 @@ optional arguments:
   --subspecies          Verify taxonomic classification at subspecies rank. Default:[False]
 ```
 
+## Example of Using Lemur Report as Input for ONT datasets
+Since Lemur report uses a format that taxid is the first column, we set '-t' to '0', which is already the default setting, and can be omit. Using the following command to run Magnet. 
+
+```
+magnet.py -c {lemur_report_file} -i {input_fastq_file} -o {output_path} -m ont
+```
+
+## Example of Using Kraken2 Report as Input for ONT datasets
+Since kraken2 report uses a format that taxid is the fifth column, we set '-t' to '4', and since the abundance estimation is located in the first column, we set '-a' to '0'. To filter out potiential noise at low abundance, we could set '--min-abundance' to 0.001. Therefore, we could use the following command. 
+
+```
+magnet.py -c {kraken2_report_file} -i {input_fastq_file} -o {output_path} -m ont -t 4 -a 0 --min-abundance 0.001
+```
+
 ## Example Output
 
-The following table is an example of the output csv file.
+The following table is an example of the output csv file 'cluster_representative.csv'.
 
-| Taxonomy ID | Assembly Accession ID | Source Database | Is Representative | Assembly Level | Organism of Assembly | Downloaded | Species | Breadth Coverage | Expected Coverage | Coverage Score | Depth Coverage | BC2  | EC2  | CS2  | DC2  | Consensus ANI |
-|-------------|-----------------------|-----------------|-------------------|----------------|----------------------|------------|---------|------------------|-------------------|----------------|----------------|------|------|------|------|---------------|
-| 1747    | GCF_000376705.1 | NCBI RefSeq                                   | TRUE  | Complete Genome | Cutibacterium acnes HL096PA1                  | TRUE | Cutibacterium acnes     | 0.41 | 0.47 | 0.87 | 1.54 | 0.41 | 0.4  | 1.03 | 1.24 | 0.79 | 
-| 1280    | GCF_000013425.1 | University of Oklahoma Health Sciences Center | TRUE  | Complete Genome | Staphylococcus aureus subsp. aureus NCTC 8325 | TRUE | Staphylococcus aureus   | 0.87 | 0.92 | 0.95 | 2.87 | 0.86 | 0.87 | 0.99 | 2.35 | 0.97 | 
-| 210     | GCF_017821535.1 | NCBI RefSeq                                   | TRUE  | Complete Genome | Helicobacter pylori                           | TRUE | Helicobacter pylori     | 0.63 | 0.72 | 0.88 | 2.01 | 0.63 | 0.65 | 0.97 | 1.66 | 0.85 | 
-| 1396    | GCF_002220285.1 | NCBI RefSeq                                   | TRUE  | Complete Genome | Bacillus cereus                               | TRUE | Bacillus cereus         | 0.74 | 0.96 | 0.77 | 4.26 | 0.02 | 0.05 | 0.46 | 2.25 | 0.84 | 
-| 1890302 | GCF_008807735.1 | NCBI RefSeq                                   | TRUE  | Complete Genome | Bacillus wiedmannii                           | TRUE | Bacillus wiedmannii     | 0.77 | 0.96 | 0.79 | 4.32 | 0.04 | 0.08 | 0.45 | 2.31 | 0.82 | 
-| 1423    | GCF_000009045.1 | BSNR                                          | TRUE  | Complete Genome | Bacillus subtilis subsp. subtilis str. 168    | TRUE | Bacillus subtilis       | 0.03 | 0.23 | 0.13 | 8.75 | 0    | 0    | 0    | 0    | 0    | 
-| 294     | GCF_000730425.1 | NCBI RefSeq                                   | FALSE | Complete Genome | Pseudomonas fluorescens                       | TRUE | Pseudomonas fluorescens | 0.21 | 0.36 | 0.57 | 2.17 | 0    | 0    | 0    | 0    | 0    | 
+| Taxonomy ID | Assembly Accession ID | Source Database | Is Representative | Assembly Level | Organism of Assembly | Strain | Total Length | Downloaded | Species | Cluster Representative | Cluster Members | Secondary Breadth | Secondary Expected | Secondary Score | Secondary Depth | Primary Breadth | Primary Expected | Primary Score | Primary Depth | Consensus ANI | Combined PS and ANI (Sqrt(ANI)xPSx100),Presence/Absence
+| 2678528 | GCF_028867355.1 | SOURCE_DATABASE_REFSEQ | False | Complete Genome | Listeria sp. LM90SB2 | LM90SB2 | 2915834.0 | True | Listeria sp. LM90SB2 | True | GCF_028867355.1,GCF_000196035.1 | 1.0 | 1.0 | 1.0 | 3195.6499999657044 | 1.0 | 1.0 | 1.0 | 3188.0799997530726 | 0.9957277140090639 | 99.79 | Present |
+| 96241   | GCF_006094475.1 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Bacillus spizizenii ATCC 6633 = JCM 2499 | ATCC 6633 | 4045538.0 | True | Bacillus spizizenii | True | GCF_006094475.1 | 0.9999987640704401 | 0.9999999999999607 | 0.9999987640704794 | 30.85103792256793 | 0.9999987640704401 | 0.999999999999958 | 0.999998764070482 | 30.786837976602836 | 0.9952862581301721 | 99.76 | Present |
+| 1613    | GCF_029961225.1 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Limosilactobacillus fermentum | EFEL6800 | 2103331.0 | True | Limosilactobacillus fermentum | True | GCF_029961225.1 | 0.17646569702852932 | 0.1786636068369798 | 0.9876980553154514 | 1.1147205952452701 | 0.17275099611416372 | 0.17304955697814606 | 0.9982747088799537 | 1.0992270709852185 | 0.853534466277766 | 92.23 | Present |
+| 287     | GCF_000006765.1 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Pseudomonas aeruginosa PAO1 | PAO1 | 6264404.0 | True | Pseudomonas aeruginosa | True | GCF_024714315.1,GCF_000006765.1 | 0.9736496879830867 | 1.0 | 0.9736496879830867 | 133.57679009269043 | 0.9736029157761855 | 1.0 | 0.9736029157761855 | 133.2863715317914 | 0.9790992928162352 | 96.34 | Present |
+| 4932    | GCF_000146045.2 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Saccharomyces cerevisiae S288C | S288C | 12071326.0 | True | Saccharomyces cerevisiae | True | GCF_000146045.2 | 0.9702460413067091 | 0.9988842650498445 | 0.9713297878991953 | 7.005664504492986 | 0.9551612822296097 | 0.9987129198063666 | 0.9563922357335672 | 6.96673509016021 | 0.8611351208262882 | 88.75 | Present |
+| 28901   | GCF_000006945.2 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Salmonella enterica subsp. enterica serovar Typhimurium str. LT2 | LT2 | 4951383.0 | True | Salmonella enterica | True | GCF_000006945.2,GCF_014492125.1,GCF_022556855.1,GCF_014491785.1 | 0.7829200506438564 | 0.8320860674724839 | 0.9409123421835766 | 2.2776524817939543 | 0.7817768582280826 | 0.8295483061281343 | 0.9424126991193291 | 2.2617706866885654 | 0.9299024245256468 | 90.88 | Present |
+| 562     | GCF_000008865.2 | SOURCE_DATABASE_REFSEQ | True  | Complete Genome | Escherichia coli O157:H7 str. Sakai | Sakai substr. RIMD 0509952 | 5594605.0 | True | Escherichia coli | True | GCF_000008865.2 | 0.6591498747494352 | 0.7795045795270928 | 0.8456010292451726 | 2.2926196898951465 | 0.6569027483105632 | 0.7772529211094938 | 0.8451595747917728 | 2.284965162259128 | 0.8996365155332352 | 80.16 | Present |
+| 1913579 | GCF_001875785.1 | SOURCE_DATABASE_REFSEQ | False | Scaffold        | Bacillus sp. FMQ74 | FMQ74 | 4161595.0 | True | Bacillus sp. FMQ74 | True | GCF_001875785.1 | 0.003557530225790833 | 0.03775324221474807 | 0.0942311180998676 | 10.81661600810537 | 0.002592275317516481 | 0.02381212312913672 | 0.10886367853291296 | 9.295791620318873 | 0.905627438899158 | 10.36 | Absent |
 
 The table contains the following information on the reference genome that are being selected for alignment:
 
@@ -71,20 +85,22 @@ The table contains the following information on the reference genome that are be
 - Is Representative: Whether or not the assembly is labeled as representative genome in NCBI database
 - Assembly Level: the assembly level of the assembly, can be one of the following: complete genome, chromosome, contig, scaffold
 - Organism of Assembly: The description of the assembly, may contain strain level information
+- Strain: The specific strain used for alignment
 - Species: taxonomy name of the species
+- Cluster Representative: Whether the genome is a cluster representative after ANI clustering
+- Cluster Members: Members of the same cluster
 
-After the reference genomes are being selected, the pipeline aligns the reads (in fasta format) to each one of the the reference genomes independently with Minimap2, and calculated the following:
+After the reference genomes are being selected, the pipeline create a reference in multi-fasta format by concatenate the reference genomes, and aligns the reads (in fasta format) to this concatenated reference, and calculated the following:
 
-- Breadth Coverage: The proportion of the genome has reads aligned
-- Expected Coverage: An estimation of the expected breadth of coverage based on the assumption that the alignment of the read is randomly distributed along the entire reference genome
-- Coverage Score: Breadth Coverage / Expected Coverage
-- Depth Coverage: The mean depth of coverage, calculated with aligned regions only
-
-The pipeline then filters out the species with low coverage score based on the user defined threshold (default: 0.7), then create a reference in multi-fasta format by concatenate the reference genomes of the remaining species. The reads are then aligned to this concatenated reference. The output of this step contains the following:
-
-- BC2: Breadth Coverage of the second round alignment
-- EC2: Expected Coverage of the second round alignment
-- CS2: BC2 / EC2
-- DC2: Depth Coverage of the second round alignment
-- Consensus ANI: The ANI is calculated by comparing the consensus genome created by the second round alignment with the original reference genome. Unaligned regions are excluded. 
+- Secondary Breadth Coverage: The proportion of the genome has reads aligned, including secondary alignment and alignments with low MAPQ. 
+- Secondary Expected Coverage: An estimation of the expected breadth of coverage based on the assumption that the alignment of the read is randomly distributed along the entire reference genome, excluding secondary alignment and alignments with low MAPQ. 
+- Secondary Coverage Score: Secondary Breadth Coverage / Secondary Expected Coverage 
+- Secondary Depth Coverage: The mean depth of coverage, calculated with aligned regions only, excluding secondary alignment and alignments with low MAPQ. 
+- Primary Breadth Coverage: The proportion of the genome has reads aligned, excluding secondary alignment and alignments with low MAPQ. 
+- Primary Expected Coverage: An estimation of the expected breadth of coverage based on the assumption that the alignment of the read is randomly distributed along the entire reference genome, excluding secondary alignment and alignments with low MAPQ. 
+- Primary Coverage Score: Primary Breadth Coverage / Primary Expected Coverage
+- Primary Depth Coverage: The mean depth of coverage, calculated with aligned regions only, excluding secondary alignment and alignments with low MAPQ. 
+- Consensus ANI: The ANI is calculated by comparing the consensus genome created by the primary alignment with the original reference genome. Unaligned regions are excluded. 
+- Combined PS and ANI (Sqrt(ANI)xPSx100)
+- Presence/Absence Calls
 
