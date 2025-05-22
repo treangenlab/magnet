@@ -73,9 +73,9 @@ def find_representative_genome(fastani_path, fastani_assemblies, downloaded_asse
                  columns=fastani_assemblies,
                  index=fastani_assemblies)
 
-    model = AgglomerativeClustering(affinity='precomputed', n_clusters=None, compute_full_tree=True,
+    model = AgglomerativeClustering(metric='precomputed', n_clusters=None, compute_full_tree=True,
                                     linkage='complete', 
-                                    distance_threshold=0.05).fit(dist_df)
+                                    distance_threshold=0.05).fit(dist_df.values)
     cluster_df = dist_df.copy()
     #print(cluster_df)
     cluster_df['Cluster Label'] = model.labels_
