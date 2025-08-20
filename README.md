@@ -3,7 +3,12 @@
 MAGnet is a computational tool that uses reference based method to refine taxonomic assignment and provide accurate abundance estimation. This pipeline handles reference genome selection, download using NCBI Datasets, read alignment using Minimap2, and breadth and depth of genome coverage calculations.
 
 ## Dependencies
+To setup the environment with all dependencies to run Magnet. Use the following command:
+```
+conda env create -f magnet-env-specs.yml
+```
 
+Here's a list of key dependencies (not exhaustive):
 - Python 3.9
 - NCBI Datasets v15.27.1
 - Minimap2 v2.24-r1122

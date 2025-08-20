@@ -1,0 +1,27 @@
+# Magnet dependancies
+# Specific in readme but no conda env was found in the MAGnet repo
+# Env made by PK: 20/Aug/25 ; based on Eddy's Mimic project env running magnet successfully
+
+name: magnet-env
+channels:
+    - conda-forge
+    - bioconda
+dependencies:
+    - python=3.9
+    - ncbi-datasets-cli=17.1.0 
+    - minimap2=2.24
+    - samtools=1.15.1
+    - biopython
+    - pandas
+    - ete3=3.1.2
+    - bwa=0.7.17
+    - scikit-learn=0.23.2
+    - numpy=1.23.5
+    - fastani
+
+# notes on the list of packages:
+# PK: scikit-learn and fastani is not listed in the README but is required to run magnet
+#   - scikit-learn: version: 0.23.2 works ; later versions need to replace `affinity` with `metric` in the parameters of `AgglomerativeClustering`
+#   - ncbi-datasets-cli: version: 17.1.0 works slower probably due to rate control; v15.27.1 mentioned in the README fails with `Error: 429 Too Many Requests`
+#                        when calling `datasets download/summary` commands ... 
+#   - numpy: version: 1.23.5 works ; later versions have issue with `np.float` deprecated alias for the builtin `float`.
