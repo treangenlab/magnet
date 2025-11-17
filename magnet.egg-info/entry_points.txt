@@ -1,0 +1,2 @@
+[console_scripts]
+magnet = magnet:main

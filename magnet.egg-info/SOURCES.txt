@@ -1,0 +1,16 @@
+LICENSE.txt
+README.md
+magnet.py
+setup.py
+magnet.egg-info/PKG-INFO
+magnet.egg-info/SOURCES.txt
+magnet.egg-info/dependency_links.txt
+magnet.egg-info/entry_points.txt
+magnet.egg-info/requires.txt
+magnet.egg-info/top_level.txt
+utils/__init__.py
+utils/alignment.py
+utils/ani.py
+utils/input_parsing.py
+utils/reference_finder.py
+utils/summary.py

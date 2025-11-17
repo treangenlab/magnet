@@ -73,9 +73,9 @@ def find_representative_genome(fastani_path, fastani_assemblies, downloaded_asse
                  columns=fastani_assemblies,
                  index=fastani_assemblies)
 
-    model = AgglomerativeClustering(affinity='precomputed', n_clusters=None, compute_full_tree=True,
+    model = AgglomerativeClustering(metric='precomputed', n_clusters=None, compute_full_tree=True,
                                     linkage='complete', 
-                                    distance_threshold=0.05).fit(dist_df)
+                                    distance_threshold=0.05).fit(dist_df.values)
     cluster_df = dist_df.copy()
     #print(cluster_df)
     cluster_df['Cluster Label'] = model.labels_
@@ -323,31 +323,122 @@ def calculate_depth(assembly_id, taxa_records):
         expected_breadth_coverage, std = get_expected_coverage(genome_length, reads_mapped, genome_totol_count)
     
     return breadth_coverage, depth_coverage, expected_breadth_coverage
-
 def main():
     parser = argparse.ArgumentParser(description="Universal Taxonomic Classification Verifier.")
-    parser.add_argument("-c", "--classification", type=pathlib.Path, required=True, help="Path to the Taxonomic Classification Report. Accepting csv/tsv file format, other text formats are treated as tsv.")
-    parser.add_argument("-i", "--fastq", type=pathlib.Path, required=True, help="Path to the first fastq file.")
-    parser.add_argument("-I", "--fastq2", type=pathlib.Path, required=False, help="Path to the second fastq file for paired-end reads.")
-    parser.add_argument("-m", "--mode", type=str, required=False, choices=['ont', 'illumina'], help="Modes for different sequencing platforms [ont, illumina]. Default:[ont]",  default='ont')
-    parser.add_argument("-o", "--output", type=pathlib.Path, required=True, help="Path to the output directory.")
-    parser.add_argument("-t", "--taxid-idx", type=int, required=False, help="The column index (0-based) of the taxids. Default:[0]", default=0)
-    parser.add_argument("-a", "--abundance-idx", type=int, required=False, help="The column index (0-based) of the abundance. Default:[None]")
-    parser.add_argument("--min-abundance", type=float, required=False, help="Minimum abundance (0-1) for pre-filtering, exclude taxa below the threshold.", default=0)
-    parser.add_argument("--min-mapq", type=int, required=False, help="Minimum MAPQ for primary alignments. Default:[20]", default=20)
-    parser.add_argument("--min-covscore", type=float, required=False, help="Minimum Coverage Score for supplementary alignments. Default:[0.7]", default=0.7)
-    parser.add_argument("--threads", type=int, required=False, help="Number of threads for Multi-threading. Default:[1]", default=1)
-    parser.add_argument("--kingdom", type=str, help="A comma separated list of taxids of valid kingdoms. Default:[2,4751,2157,10239]", default='2,4751,2157,10239')
-    parser.add_argument("--include-mag", action='store_true', required=False, help="Include metagenomic assemble genomes. Default:[off]")
+    parser.add_argument(
+        "-c",
+        "--classification",
+        type=pathlib.Path,
+        required=True,
+        help="Path to the Taxonomic Classification Report. Accepting csv/tsv file format, other text formats are treated as tsv.",
+    )
+    parser.add_argument(
+        "-i",
+        "--fastq",
+        type=pathlib.Path,
+        required=True,
+        help="Path to the first fastq file.",
+    )
+    parser.add_argument(
+        "-I",
+        "--fastq2",
+        type=pathlib.Path,
+        required=False,
+        help="Path to the second fastq file for paired-end reads.",
+    )
+    parser.add_argument(
+        "-m",
+        "--mode",
+        type=str,
+        required=False,
+        choices=["ont", "illumina"],
+        help="Modes for different sequencing platforms [ont, illumina]. Default:[ont]",
+        default="ont",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=pathlib.Path,
+        required=True,
+        help="Path to the output directory.",
+    )
+    parser.add_argument(
+        "-t",
+        "--taxid-idx",
+        type=int,
+        required=False,
+        help="The column index (0-based) of the taxids. Default:[0]",
+        default=0,
+    )
+    parser.add_argument(
+        "-a",
+        "--abundance-idx",
+        type=int,
+        required=False,
+        help="The column index (0-based) of the abundance. Default:[None]",
+    )
+    parser.add_argument(
+        "--min-abundance",
+        type=float,
+        required=False,
+        help="Minimum abundance (0-1) for pre-filtering, exclude taxa below the threshold.",
+        default=0,
+    )
+    parser.add_argument(
+        "--min-mapq",
+        type=int,
+        required=False,
+        help="Minimum MAPQ for primary alignments. Default:[20]",
+        default=20,
+    )
+    parser.add_argument(
+        "--min-covscore",
+        type=float,
+        required=False,
+        help="Minimum Coverage Score for supplementary alignments. Default:[0.7]",
+        default=0.7,
+    )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        required=False,
+        help="Number of threads for Multi-threading. Default:[1]",
+        default=1,
+    )
+    parser.add_argument(
+        "--kingdom",
+        type=str,
+        help="A comma separated list of taxids of valid kingdoms. Default:[2,4751,2157,10239]",
+        default="2,4751,2157,10239",
+    )
+    parser.add_argument(
+        "--include-mag",
+        action="store_true",
+        required=False,
+        help="Include metagenomic assemble genomes. Default:[off]",
+    )
     parser.set_defaults(include_mag=False)
-    parser.add_argument("--subspecies", action='store_true', required=False, help="Verify taxonomic classification at subspecies rank. Default:[off]")
+    parser.add_argument(
+        "--subspecies",
+        action="store_true",
+        required=False,
+        help="Verify taxonomic classification at subspecies rank. Default:[off]",
+    )
     parser.set_defaults(subspecies=False)
-    parser.add_argument("--accession", action='store_true', required=False, help="Take accession ids as taxids. Does not work with min-abundance. Default:[off]")
+    parser.add_argument(
+        "--accession",
+        action="store_true",
+        required=False,
+        help="Take accession ids as taxids. Does not work with min-abundance. Default:[off]",
+    )
     parser.set_defaults(accession=False)
-    
+
     args = parser.parse_args()
 
     run_magnet(args)
-    
+
+
 if __name__ == "__main__":
+    # Make run as a console entry point: `magnet ...`
     main()
+
