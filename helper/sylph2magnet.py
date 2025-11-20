@@ -47,7 +47,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # --- Load Sylph merged abundance table ---
+    # Load Sylph merged abundance table
     df = pd.read_csv(args.sylph_merged, sep="\t")
 
     if "clade_name" not in df.columns:
@@ -92,7 +92,7 @@ def main():
         sys.stderr.write("[ERROR] No genome-level rows left after filtering.\n")
         sys.exit(1)
 
-    # --- Load accession -> species_name -> ncbi_taxid map ---
+    # Load accession -> species_name -> ncbi_taxid map
     acc_map = pd.read_csv(
         args.acc_taxmap,
         sep="\t",
@@ -105,6 +105,17 @@ def main():
     if acc_map.empty:
         sys.stderr.write("[ERROR] acc-taxmap has no valid ncbi_taxid entries.\n")
         sys.exit(1)
+
+    # Make sure each accession appears only once
+    dup_mask = acc_map.duplicated(subset=["accession"])
+    if dup_mask.any():
+        n_dup = dup_mask.sum()
+        sys.stderr.write(
+            f"[WARN] {n_dup} duplicate accession rows in acc-taxmap; "
+            "keeping the first occurrence per accession.\n"
+        )
+        acc_map = acc_map[~dup_mask]
+
 
     # Merge Sylph table with taxid map
     merged = df.merge(

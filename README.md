@@ -67,25 +67,16 @@ magnet -c {lemur_report_file} -i {input_fastq_file} -o {output_path} -m ont
 ```
 
 ## Example of Using Sylph Merged Report as Input
-Since Sylph uses GTDB databases we need to convert these GTDB taoxnomies to NCBI taxonomies to use Magnet. We wrote a helper script that will take in a merged sylph-tax report in the metaphlann style format and will output a .tsv for use within Magnet. An full example workflow can be seen below:
+Sylph uses GTDB databases for it's default so we need to convert these GTDB taoxnomies to NCBI taxonomies to use Magnet. We wrote a helper script that will take in a merged sylph-tax report in the metaphlann style format and will output a .tsv for use within Magnet. An full example workflow can be seen below:
 
 We already created the sylph_gtdb226_2_ncbi.tsv.gz file (unzip before using) but for future use follow the bash script in the magnet/tax dir similarly.
 
 ```
-# Profile reads
-sylph profile gtdb-r226-c200-dbv1.syldb \
-  reads_dir/*.fastq.gz \
-  -t 64 > output_profile.tsv
+# Activate your conda env
+conda activate magnet
 
-# Taxonomy
-sylph-tax taxprof output_profile.tsv \
-  -t gtdb_r226_metadata.tsv.gz \
-  -o sylph_mpa_tax_output
-
-# Merge the outputs
-sylph-tax merge sylph_mpa_tax_output/*.sylphmpa \
-  --column relative_abundance \
-  -o sylph_mpa_merged_abundance_table.tsv
+# Unzip the acc-taxmap file
+gzip -d /path/to/magnet/tax/sylph_gtdb226_2_ncbi.tsv.gz
 
 # Now use our helper script (column name for sample from merged sylph output)
 python /path/to/magnet/helper/sylph2magnet.py \
@@ -105,6 +96,7 @@ magnet -c sample1_magnet_species.tsv \
   -a 1 \
   --min-abundance 0.001
 ```
+
 With this format, taxid is the first column, we set '-t' to '0', and since the abundance estimation is located in the second column, we set '-a' to '1'. To filter out potiential noise at low abundance, we  set '--min-abundance' to 0.001.
 
 ## Example Output
