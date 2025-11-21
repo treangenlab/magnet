@@ -8,7 +8,7 @@ Please make sure to have a working conda installation first. If you don't, pleas
 
 ```
 # Clone the respository
-git clone https://github.com/treangenlab/magnet.git -b taxdev
+git clone https://github.com/treangenlab/magnet.git
 
 # Go to repo
 cd magnet
