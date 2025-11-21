@@ -2,23 +2,33 @@
 
 MAGnet is a computational tool that uses reference based method to refine taxonomic assignment and provide accurate abundance estimation. This pipeline handles reference genome selection, download using NCBI Datasets, read alignment using Minimap2, and breadth and depth of genome coverage calculations.
 
-## Dependencies
+## Installation
 
-- Python 3.9
-- NCBI Datasets v15.27.1
-- Minimap2 v2.24-r1122
-- Samtools v1.15.1
-- Biopython
-- Pandas
-- Ete3 v3.1.2
-- BWA v0.7.17
+Please make sure to have a working conda installation first. If you don't, please select the appropriate version found [here](https://github.com/conda-forge/miniforge).
+
+```
+# Clone the respository
+git clone https://github.com/treangenlab/magnet.git
+
+# Go to repo
+cd magnet
+
+# Create conda environment
+conda env create -n magnet -f magnet_env.yml
+
+# Activate conda environment
+conda activate magnet
+
+# Test install with 
+magnet -h
+```
 
 ## Getting started
 
 ```
-usage: magnet.py [-h] -c CLASSIFICATION -i FASTQ [-I FASTQ2] [-m {ont,illumina}] -o OUTPUT [-t TAXID_IDX]
-                 [-a ABUNDANCE_IDX] [--min-abundance MIN_ABUNDANCE] [--min-mapq MIN_MAPQ]
-                 [--min-covscore MIN_COVSCORE] [--threads THREADS] [--include-mag] [--subspecies]
+usage: magnet [-h] -c CLASSIFICATION -i FASTQ [-I FASTQ2] [-m {ont,illumina}] -o OUTPUT [-t TAXID_IDX]
+              [-a ABUNDANCE_IDX] [--min-abundance MIN_ABUNDANCE] [--min-mapq MIN_MAPQ]
+              [--min-covscore MIN_COVSCORE] [--threads THREADS] [--include-mag] [--subspecies]
 
 Universal Taxonomic Classification Verifier.
 
@@ -53,15 +63,41 @@ optional arguments:
 Since Lemur report uses a format that taxid is the first column, we set '-t' to '0', which is already the default setting, and can be omit. Using the following command to run Magnet. 
 
 ```
-magnet.py -c {lemur_report_file} -i {input_fastq_file} -o {output_path} -m ont
+magnet -c {lemur_report_file} -i {input_fastq_file} -o {output_path} -m ont
 ```
 
-## Example of Using Kraken2 Report as Input for ONT datasets
-Since kraken2 report uses a format that taxid is the fifth column, we set '-t' to '4', and since the abundance estimation is located in the first column, we set '-a' to '0'. To filter out potiential noise at low abundance, we could set '--min-abundance' to 0.001. Therefore, we could use the following command. 
+## Example of Using Sylph Merged Report as Input
+Sylph uses GTDB databases for it's default so we need to convert these GTDB taoxnomies to NCBI taxonomies to use Magnet. We wrote a helper script that will take in a merged sylph-tax report in the metaphlann style format and will output a .tsv for use within Magnet. An full example workflow can be seen below:
+
+We already created the sylph_gtdb226_2_ncbi.tsv.gz file (unzip before using) but for future use follow the bash script in the magnet/tax dir similarly.
 
 ```
-magnet.py -c {kraken2_report_file} -i {input_fastq_file} -o {output_path} -m ont -t 4 -a 0 --min-abundance 0.001
+# Activate your conda env
+conda activate magnet
+
+# Unzip the acc-taxmap file
+gzip -d /path/to/magnet/tax/sylph_gtdb226_2_ncbi.tsv.gz
+
+# Now use our helper script (column name for sample from merged sylph output)
+python /path/to/magnet/helper/sylph2magnet.py \
+  -s /path/to/sylph_mpa_merged_abundance_table.tsv \
+  --acc-taxmap /path/to/magnet/tax/sylph_gtdb226_2_ncbi.tsv \
+  --sample "sample1.fastq.gz" \
+  -o sample1_magnet_species.tsv \
+  --min-abundance 0.0 \
+  --scale-to-fraction
+
+# Run magnet for sample1
+magnet -c sample1_magnet_species.tsv \
+  -i /path/to/sample1.fastq.gz \
+  -o /path/to/magnet_sample1 \
+  -m ont \
+  -t 0 \
+  -a 1 \
+  --min-abundance 0.001
 ```
+
+With this format, taxid is the first column, we set '-t' to '0', and since the abundance estimation is located in the second column, we set '-a' to '1'. To filter out potiential noise at low abundance, we  set '--min-abundance' to 0.001.
 
 ## Example Output
 
